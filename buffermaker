@@ -1,5 +1,5 @@
 #!/bin/bash
-version="0.10.2"
+buffermaker_version="0.10.2.1"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
