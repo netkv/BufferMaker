@@ -93,23 +93,9 @@ add-mode testui
 	:: '[right]' format-right
 	:: '[down]' format-down
 	:: 'RET' link-enter
-	:: '[next]' 'scroll-down'
-	:: '[prior]' 'scroll-up'
-	:: "$(kbd C-a)" 'move-beginning-of-line'
-	:: "$(kbd C-e)" 'move-end-of-line'
-	:: "$(kbd C-p)" 'previous-line'
-	:: "$(kbd C-n)" 'next-line'
-	:: "$(kbd C-f)" 'forward-char'
-	:: "$(kbd M-f)" 'forward-word'
-	:: "$(kbd C-b)" 'backward-char'
-	:: "$(kbd M-b)" 'backward-word'
-	:: "$(kbd M-v)" 'scroll-down'
-	:: "$(kbd C-v)" 'scroll-up'
 	:: "$(kbd C-c)" 'die'
-	:: "$(kbd M-x)" 'execute-extended-command'
 	mode-options
 		:: else :
-		:: disable-global 1
 
 function testui {
 	declare-new-buffer
@@ -118,9 +104,6 @@ function testui {
 		:: info "Testui"
 		:: mode testui
 		:: filetype 'format'
-		:: file "testui"
-		:: modified 0
-		:: isfile 0
 		:: syntax syntax-format
 		:: syntax-exec 1
 	size-full
