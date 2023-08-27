@@ -84,6 +84,7 @@ default_faces=(
 		TODO "$(:background magenta)"
 		NOTE "$(:background gray)"
 		menu "$(:background yellow :foreground black)"
+		menu-highlight '\e[4;30;43m'
 		menu-enabled-face "$(:background yellow :foreground black)"
 		menu-back '\e[4m\e[1m'
 		menu-selected-face "$(:background light-yellow :foreground black :weight bold)"
@@ -2082,7 +2083,7 @@ function redraw {
 			   ''\
 			   $((bf_d[loc-x] + bf_d[number-length] + space))\
 			   "${faces[default]}"\
-			   "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length] + 1)}"\
+			   "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"\
 			   "$nlchar"
 	done
 	redraw-statusline
