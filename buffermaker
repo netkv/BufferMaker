@@ -1,5 +1,5 @@
 #!/bin/bash
-version="0.10.1"
+version="0.10.2"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -1683,7 +1683,7 @@ function next-line {
 	fi
 }
 function scroll-down {
-	move-previous-line '$((bf_d[size-y] - 3))'
+	move-previous-line $((bf_d[size-y] - 3))
 	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
@@ -1692,7 +1692,7 @@ function scroll-down {
 	fi
 }
 function scroll-up {
-	move-next-line '$((bf_d[size-y] - 3))'
+	move-next-line $((bf_d[size-y] - 3))
 	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
