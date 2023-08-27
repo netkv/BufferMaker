@@ -1,11 +1,90 @@
-## BufferMaker
+# BufferMaker
 
 Pure Bash TUI framework
 
-# Example - simple number counter
+BufferMaker is the result of me trying to add too stuff into the Ebashs project, from which BufferMaker was separated, since it may be usesfull on its own.
+
+Ebashs and thus BufferMaker are based on https://github.com/comfies/bed.
+
+## Basics
+
+First step in creating user interface is creating a buffer. Buffer is collection of arrays used to display stuff.
+
+Buffers are completelly independent and you can use how many you need
+
+### buffer
+
+Array used for the source of displaying data.
+
+### bf_s
+
+Array used for displaying. Shouldn't be accesed directly (unless you want to use custom redrawing function), instead `buffer` array is automatically converted to `bf_s` during the redraw function if the given line hadn't been rendered already. If needed the rendering to `bf_s` can be invoked manual via `make-render` (renders all visible lines), `make-render-area` <start line> <end line>, `make-render-line` <line> (renders current line if no arguments passed).
+
+#### Rendering
+
+(syntaxing in Ebashs terms)
+
+To render a buffer, a syntax function is required. There are two types of syntax functions:
+
+- "normal" - `set-face` depending on `$word`
+- "executing" (bf_d[syntax-exec]=1) - you need to do lot of stuff manually
+
+### bf_c
+
+Array used for moving and clicking, mainly used by format buffer, but shouldn't be too hard to work with manually.
+
+## format
+
+BufferMaker's own formating markup language.
+
+### color
+```
+<f> face text <f>
+```
+### uppercase
+```
+<u> text </u>
+```
+### title
+```
+<h> text </h>
+```
+### link
+```
+<link> function : text </link>
+
+or
+
+<a> function : <f> link text </f> </a>
+```
+### object
+```
+<o> id: id select: to-do-on-enter right: on-move-right left: on-left up: on-up down: down text: text </o>
+```
+### positioning
+```
+<s> number-of-spaces
+
+<i> number-of-spaces
+text
+...
+</i>
+
+<tab> (= <->)
+<i-tab>
+text
+...
+</i>
+```
+### variables
+```
+<v> varname
+```
+
+## Example - simple number counter
 ```bash
 #!/bin/bash
-source ./buffermaker
+source buffermaker
 ## Example of buffermaker tui program
 
 add-mode testui
