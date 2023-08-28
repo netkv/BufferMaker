@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.10.2.1"
+buffermaker_version="0.10.3"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -942,7 +942,7 @@ function make-render-line-loop {
 				word=''
 				((skip_next_space==1)) && skip_next_space=0 && continue
 				bf_e[line]+='s'
-				face-no-expand "${facename:-default}" ' '
+				face-no-expand "${facename:-${bf_d[background]:-default}}" ' '
 				((column++));;
 			'	')
 				syntax-word
@@ -957,7 +957,7 @@ function make-render-line-loop {
 				syntax-word
 				word=''
 				skip_next_space=0
-				face-no-expand default ' '
+				face-no-expand "${bf_d[background]:-default}" ' '
 				newline=1 # tell syntax functions that the previous char was newline # used for format thing
 				return;;
 			*)
@@ -2077,12 +2077,13 @@ function redraw {
 		}
 		# due to escape codes present in bf_s,
 		# the bf_s has to be multidimensional nonsense for perfomance reasons
-		printf "${ln}%*s\e[%sG%b%s%b"\
+		printf "${ln}%b%*s\e[%sG%b%s\e[m%b"\
 			   ${lnargs[@]}\
+			   "${faces[${bf_d[background]:-default}]}"\
 			   $((bf_d[size-x] - bf_d[number-length]))\
 			   ''\
 			   $((bf_d[loc-x] + bf_d[number-length] + space))\
-			   "${faces[default]}"\
+			   "${faces[${bf_d[background]:-default}]}"\
 			   "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"\
 			   "$nlchar"
 	done
