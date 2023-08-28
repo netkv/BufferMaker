@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.10.3"
+buffermaker_version="0.10.4"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -1053,12 +1053,11 @@ function clear-buffer {
 }
 
 ## list-directory
-# Basically like ls command
-	# '    If' \$hidden is 1 also show hidden files 
-	# '    If' \$hidden is 0 also show the special .. 
+# Basically like ls command 
 function list-directory {
+	((hidden==1)) && shopt -s dotglob
+	((hidden==0)) && shopt -u dotglob
 	printf '..\n'
-	((hidden==0)) || printf '%s\n' .*
 	printf '%s\n' *
 }
 
@@ -2093,6 +2092,14 @@ function redraw {
 	@ifs		
 	# redraw menu if open
 	[ "${bf_d[mode]}" = 'menu' ] && redraw-menu
+}
+
+## print-buffer-line
+function print-buffer-line {
+	IFS=''
+	local -n linearray="${bf_s[bf_d[line]]}"
+	printf '%s' "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"
+	@ifs
 }
 
 ## redraw-menuline Redraws top menu line
