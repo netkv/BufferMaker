@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.10.4"
+buffermaker_version="0.10.4.1"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -81,12 +81,10 @@ function load-default-config {
 default_faces=(
 		reset '\e[m'
 		default "$(:weight normal)"
-		TODO "$(:background magenta)"
-		NOTE "$(:background gray)"
 		menu "$(:background yellow :foreground black)"
 		menu-highlight '\e[4;30;43m'
-		menu-enabled-face "$(:background yellow :foreground black)"
 		menu-back '\e[4m\e[1m'
+		menu-enabled-face "$(:background yellow :foreground black)"
 		menu-selected-face "$(:background light-yellow :foreground black :weight bold)"
 		button "$(:foreground light-cyan)"
 		link '\e[4;96m'
@@ -95,38 +93,19 @@ default_faces=(
 		highlight "$(:weight bold :foreground light-red)"
 		dim "$(:weight dim)"
 		name "$(:foreground magenta)"
-		#mode-line '\e[m'
-		mode-line "$(:background yellow :foreground black)"
 		hint "$(:foreground light-yellow)"
 		hint-highlight '\e[4;93m'
-		file-name "$(:weight bold)"
 		line-number "$(:foreground gray)"
 		line-number-empty "$(:weight dim :foreground gray)"
 		line-number-current-line "$(:weight bold :foreground light-red)"
 		tab-face "$(:weight dim :foreground gray)"
 		region "$(:weight bold :background gray)"
 		minibuffer-prompt "$(:weight normal)"
-		# ansi colors
-		ansi-color-black '\e[40m'
-		ansi-color-blue '\e[44m'
-		ansi-color-bold '\e[1m'
-		ansi-color-bright-black '\e[100m'
-		ansi-color-bright-blue '\e[104m'
-		ansi-color-bright-cyan '\e[106m'
-		ansi-color-bright-green '\e[102m'
-		ansi-color-bright-magenta '\e[105m'
-		ansi-color-bright-red '\e[101m'
-		ansi-color-bright-white '\e[107m'
-		ansi-color-bright-yellow '\e[103m'
-		ansi-color-cyan '\e[46m'
-		ansi-color-green '\e[42m'
-		ansi-color-inverse '\e[7m'
-		ansi-color-italic '\e[3m'
-		ansi-color-magenta '\e[45m'
-		ansi-color-red '\e[41m'
-		ansi-color-underline '\e[4m'
-		ansi-color-white '\e[47m'
-		ansi-color-yellow '\e[43m'
+		#
+		TODO "$(:background magenta)"
+		NOTE "$(:background gray)"
+		mode-line "$(:background yellow :foreground black)"
+		file-name "$(:weight bold)"
 		# common colors for format stuff
 		black      '\e[30m' gray          '\e[90m'
 		red        '\e[31m' light-red     '\e[91m'
@@ -136,6 +115,15 @@ default_faces=(
 		magenta    '\e[35m' light-magenta '\e[95m'
 		cyan       '\e[36m' light-cyan    '\e[96m'
 		light-gray '\e[37m' white         '\e[97m'
+
+		bg-black      '\e[40m' bg-gray          '\e[100m'
+		bg-red        '\e[41m' bg-light-red     '\e[101m'
+		bg-green      '\e[42m' bg-light-green   '\e[102m'
+		bg-yellow     '\e[43m' bg-light-yellow  '\e[103m'
+		bg-blue       '\e[44m' bg-light-blue    '\e[104m'
+		bg-magenta    '\e[45m' bg-light-magenta '\e[105m'
+		bg-cyan       '\e[46m' bg-light-cyan    '\e[106m'
+		bg-light-gray '\e[47m' bg-white         '\e[107m'
 )
 	load-theme default_faces
 }
