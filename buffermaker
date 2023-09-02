@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.10.4.1"
+buffermaker_version="0.11-WIP1"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -9,13 +9,11 @@ shopt -s extglob # Ensure advanced pattern matching is available
 shopt -s checkwinsize && (:;:) # Enable and then trigger a terminal size refresh
 
 declare -r DEFIFS="$IFS"
-declare -A highlight faces faces_raw options charmap alias descriptions
-declare -A menulineedit diredmenu menulinedebug
-declare -A menufancy
-declare -A keys_def keys_global
-declare -a k_hex buffers_l log_buffer extensions modes=('keys_global')
+declare -A highlight faces faces_raw options charmap descriptions
+declare -A keys_global
+declare -a k_hex buffers_l log_buffer modes=('keys_global')
 declare -n buffer bf_s bf_e bf_d
-declare -i menuloc_x menuloc_y toplines bottomlines hidden ismenu comment current_count _isdone
+declare -i menuloc_x menuloc_y hidden ismenu comment current_count _isdone
 declare -n menucon
 declare message reset readin
 
@@ -34,9 +32,6 @@ function load-default-config {
 	options=(
 		[mouse]=0
 		[todonote]=0
-		[menu-line]=0
-		[mode-line]=0
-		[command-line]=0 # note that disabling this means that any message will instead be draw on top of buffer
 		[line-number-mode]=0
 		[empty-line-char]=''
 		[tabchar]='    '
@@ -158,68 +153,6 @@ function nufed {
 	unset '='
 }
 	
-	
-@doc copy-function <<'+'
-copies function \$1 to function \$2
-advantage of copying instead of creating wrapper alias functions should be in theory performance(?)
-
-Little test script:
-    1() {
-    	echo hi > /dev/null
-    }
-    echo 1
-    time for e in {0..100000}; do
-    	1
-    done
-    
-    2() {
-    	1
-    }
-    echo 2
-    time for e in {0..100000}; do
-    	2
-    done
-    
-    3() {
-    	2
-    }
-    echo 3
-    time for e in {0..100000}; do
-    	3
-    done
-    
-    4() {
-    	3
-    }
-    echo 4
-    time for e in {0..100000}; do
-    	4
-    done
-
-output:
-    1
-    
-    real	0m1,636s
-    user	0m1,081s
-    sys	0m0,540s
-    2
-    
-    real	0m1,986s
-    user	0m1,453s
-    sys	0m0,518s
-    3
-    
-    real	0m2,380s
-    user	0m1,873s
-    sys	0m0,491s
-    4
-    
-    real	0m2,768s
-    user	0m2,154s
-    sys	0m0,595s
-
-It seems like there's small performace gain.
-+
 function copy-function {
 	local -a fn
 	local deffn="function $2"$'\n'
@@ -248,7 +181,6 @@ function defun {
 function ::
 case "$_last_add" in
 	add-menu) local-set-menu "$@";;
-	set-alias) add-alias "$@";;
 	set-highlight) add-highlight "$@";;
 	global-set) global-set-key "$@";;
 	set-options) define-option "$@";;
@@ -274,7 +206,7 @@ function doc {
 }
 copy-function doc @@
 
-## :+ Add documentation indent
+## Add documentation indent
 function :+ {
 	_indent+="    "
 	# "$*"
@@ -453,7 +385,7 @@ function append-array {
 
 ## setface Convert colors to escape codes
 # '$1' can be either one of colors:
-:+     black
+#     black
 #     red
 #     green
 #     yellow
@@ -469,15 +401,15 @@ function append-array {
 #     light-magenta
 #     light-cyan
 #     white
-:- 'or hex. color (like "#bb2040")'
+# 'or hex. color (like "#bb2040")'
 # 'or indexed 256 color with "c" as prefix (like c127)'
 # 'for background color $mode has to be 48 and for foreground 38'
-::
+#
 # If \$TERM \(current "$TERM"\) is \'linux\' \& option tty-linuxfb is 1 try to use true color even for tty
 # Instead of normal '\e[$mode;r;g;bm' is used '\e]P$~1mode$Hexcode\e[$~2modem'
-:+     '$mode 38 → $~1mode 2 & $~2mode 32'
+#     '$mode 38 → $~1mode 2 & $~2mode 32'
 #     '$mode 48 → $~1mode 1 & $~2mode 41'
-:- Note that the linuxfb colors are very experimental and suffer from cursor implicitly overwriting them on movenment
+# Note that the linuxfb colors are very experimental and suffer from cursor implicitly overwriting them on movenment
 function setface {
 	[ -z "$1" ] && return
 	case "$1" in
@@ -540,7 +472,7 @@ function :mode {
 }
 	
 ## :weight Sets thickness of text:
-:+     bold
+#     bold
 #     dim
 #     normal
 function :weight {
@@ -554,7 +486,7 @@ function :weight {
 }
 
 ## :slant Sets slant of text:
-:+     italic
+#     italic
 #     normal
 function :slant {
 	case "$1" in
@@ -604,7 +536,7 @@ function kbd {
 }
 
 ## define-key defines keybinding
-:+     '$1' can be either:
+#     '$1' can be either:
 #     '[function-key]'
 #     '[arrow-key]'
 #     '[prior | next]'
@@ -669,17 +601,6 @@ function define-mode-option {
 
 ## mode-options Brings mode-options of lastly defined mode into \"focus\"
 @fn mode-options '_last_add="mode-options"'
-
-
-## add-alias Adds alias '$1' of command '$2...' to M-x
-function add-alias {
-	local name="$1"
-	shift
-	alias["$name"]="$@"
-}
-
-## set-alias Brings into \"focus\" alias setting
-@fn set-alias '_last_add=set-alias'
 
 ## add-highlight Sets highlighting mode '$1' for file types '$2...'
 function add-highlight {
@@ -801,20 +722,6 @@ function load-theme {
 	)
 }
 
-## extension Set properites of extension
-function extension {
-	log_buffer+=("- LOADING EXTENSION $1 -")
-	extensions+=("$1")
-	declare -Ag "${1}_ext_d"
-	declare -ng ext_d="${1}_ext_d"
-}
-## version: Set version of extension
-function version: {
-	ext_d[version]="$1"
-}
-
-log_buffer+=('- LOADING BASH EXTENSIONS DONE -')
-
 ## rest of this garbageware
 
 ## refresh Refreshes buffer
@@ -833,7 +740,6 @@ function refresh {
 function switch-mode {
 	bckmode="${bf_d[mode]}"
 	bf_d[mode]="$1"
-	redraw-statusline
 }
 
 ## mode-back
@@ -841,7 +747,6 @@ function switch-mode {
 function mode-back {
 	bf_d[mode]="$bckmode"
 	unset bckmode
-	redraw-statusline
 }
 
 ## read-command
@@ -883,7 +788,11 @@ function make-render-area {
 		bf_s[syntaxline]="${current_buffer}_syntax${syntaxline}"
 		((syntaxline++))
 		line="$l"
-		make-render-line-loop
+		case "${bf_d[render-type]}" in
+			'per-char') make-render-line-loop-char;;
+			'per-word') make-render-line-loop;;
+			*) make-render-line-loop
+		esac
 	done
 	IFS="$bckeIFS"
 }
@@ -899,19 +808,41 @@ function make-render-line {
 	linearray=()
 	bckeIFS="${IFS}"
 	IFS=
-	make-render-line-loop
+	case "${bf_d[render-type]}" in
+		'per-char') make-render-line-loop-char;;
+		'per-word') make-render-line-loop;;
+		*) make-render-line-loop
+	esac
 	IFS="$bckeIFS"
 }
 
+function make-render-line-loop {
+	local -i comment=0
+	local -i skip_next_space=0
+	local word=''
+	bf_e[line]=''
 
+	for _link in ${bf_c[line]}; do
+		unset "$_link"
+	done
+	unset bf_c[line]
+		
+	column=0
+	IFS=' '
+	while read -rs word; do
+		IFS=''
+		syntax-word
+		IFS=' '
+	done  <<< "${buffer[line]}"
+}
 
 ## make-render-line-loop
 # Backend for make-render-area \& make-render-line
 # Also creates bf_e charmap for movenment
-:+     "Tab is 't'"
+#     "Tab is 't'"
 #     "Space is 's'"
 #     "Any unmaped char is '0'"
-function make-render-line-loop {
+function make-render-line-loop-char {
 	local -i comment=0
 	local -i skip_next_space=0
 	local word=''
@@ -956,7 +887,7 @@ function make-render-line-loop {
 
 ## syntax-word
 # Decides what a word should highlighted as:
-:+     'If todonote option is enabled, highlight "NOTE:" & "TODO:"'
+#     'If todonote option is enabled, highlight "NOTE:" & "TODO:"'
 #     'If the word is supposed to be comment highlight it as it'
 #     'Else pass it to current syntax function'
 function syntax-word {
@@ -1101,57 +1032,6 @@ function goto {
 	redraw
 }
 
-@doc syntax-format <<'EOF'
-Convert formated text into Ebashs buffer understandable format.
-
-<f> title <u> Specifications </u> </f>
-
-<[> name <f> <f> hint face_name text... </f> <[> name </f>
-<-> Set <f> hint text </f> to face <f> hint face_name </f-> .
-
-<[> name <h> <f> hint text... </f> <[> name </h>
-<-> Make <f> hint text </f> into title.
-
-<[> name <a> <f> hint command </f> <[> name : <f> hint text </f> <[> name </a>
-<-> Create clickable area that executes <f> hint command </f> on click and is labeled <f> hint text </f-> .
-<-> See <a> doc-goto link-enter : <f> link link-enter </f> </a> 
-
-<[> name <link> <f> hint command </f> <[> name : <f> hint text </f> <[> name </link>
-<-> Create clickable area that executes <f> hint command </f> on click and is labeled <f> hint text </f-> .
-<-> <[> name <link> also automatically adds <f> link link </f> face to text.
-
-<[> name <u> <f> hint text </f> <[> name </u>
-<-> Make <f> hint text </f> <u> uppercase. </u>
-
-<[> name <i> <f> hint number_of_spaces hint text </f-> ...\n...\n...\n... <[> name </i>
-<i-tab> Indent lines by <f> hint number of spaces </f-> .
-
-<[> name <i-tab>
-<-> Indent by tab (default 4 spaces).
-<-> Tab size is controlled via tab_format variable. </i>
-
-<[> name <s> <f> hint number_of_spaces </f>
-<-> Insert <f> hint number of spaces </f-> .
-
-<[> name <tab>
-<-> Insert tab.
-<-> <[> name <-> is alias for <[> name <tab>.
-
-<[> name <v> <f> hint variable_name </f> <[> name </v>
-<-> Insert contents of <f> hint variable </f> into text at formating time.
-
-<[> name <\> <f> hint text </f>
-<-> Escape <f> hint text </f>
-
-<[> name <[> <f> hint face_name text </f>
-<-> Escape <f> hint text </f> with <f> hint face </f-> .
-
-
-Some of these keywords also include versions to glue together with other words.
-For example:
-<-> text <[> name <-f> <f> name face </f> color! <[> name </f-> text
-Will turn into text <-f> lr c <-f> ly o <-f> lg l <-f> lc o <-f> lb r <-f> lm ! </f> </f> </f> </f> </f> </f-> text.
-EOF
 function syntax-format {
 	((skip_word==1)) && {
 		skip_next_space=1
@@ -1499,27 +1379,9 @@ function syntax-format {
 	face "${facename:-unknown}" "${ichar}$word"
 }
 
-@doc link-enter <<'EOF'
-Executes <f> name clickable area </f> of formated text to which current position
-of cursor points.
-Mostly used for <f> name hyperlinks </f-> .
-
-Internally <f> name clickable area </f> is defined via bf_c 2d array. Each line contains
-the <f> name clickable areas </f-> . Each of these is it's own associative array.
-Each <f> name clickable area </f> contains:
-<i-tab> <[> hint start - the first column of the area
-<[> hint end   - the last column of the area
-<[> hint exec  - what command should be executed when this function,
-<-> <f> name link-enter </f> is ran. </i>
-EOF
 function link-enter {
 	for link in ${bf_c[bf_d[line]]}; {
-		local -n bf_c_line="$link"
-		#echo "    $link" >> d
-		#echo "${bf_c_line[start]}" >> d
-		#echo "${bf_c_line[end]}" >> d
-		#echo "${bf_c_line[exec]}" >> d
-		
+		local -n bf_c_line="$link"		
 		((bf_d[column] >= bf_c_line[start])) &&
 			((bf_d[column] <= bf_c_line[end])) && {
 				has=1
@@ -1641,7 +1503,7 @@ function move-next-line {
 	for ((i = 0; i < ${1:-1}; i++)); do
 		((bf_d[line] < ${#buffer[@]}+1)) && ((bf_d[line]++)) # If we can go down, go down
 		# Move window down if needed
-		((bf_d[line] > bf_d[base] + bf_d[size-y] - 3 - bottomlines)) && {
+		((bf_d[line] > bf_d[base] + bf_d[size-y] - 3)) && {
 			((bf_d[base]++))
 			move_base=1
 		}
@@ -1653,7 +1515,6 @@ function move-next-line {
 
 function previous-line {
 	move-previous-line "$@"
-	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
 	else
@@ -1662,7 +1523,6 @@ function previous-line {
 }
 function next-line {
 	move-next-line "$@"
-	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
 	else
@@ -1671,7 +1531,6 @@ function next-line {
 }
 function scroll-down {
 	move-previous-line $((bf_d[size-y] - 3))
-	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
 	else
@@ -1680,7 +1539,6 @@ function scroll-down {
 }
 function scroll-up {
 	move-next-line $((bf_d[size-y] - 3))
-	redraw-statusline
 	if ((bf_d[selection])); then
 		redraw
 	else
@@ -1970,11 +1828,8 @@ function redraw {
 	((bf_d[column] +3 > bf_d[size-x] - bf_d[number-length] - 1)) &&
 		bf_d[basecolumn]=$((bf_d[column] - (bf_d[size-x] + bf_d[loc-x] - bf_d[number-length] - 1) +3))
 
-	# Draw top menuline
-	(("${options[menu-line]}"==1)) && {
-		"${bf_d[menuline-function]:-redraw-menuline}"
-	} || printf "\e[%s;%sH" "${bf_d[loc-y]}" "${bf_d[loc-x]}"
-
+	printf "\e[%s;%sH" "${bf_d[loc-y]}" "${bf_d[loc-x]}"
+	
 	# IFS has to be empty in order to bufferarray multiarray be printed as words instead of chars
 	IFS=''
 
@@ -1988,7 +1843,7 @@ function redraw {
 	local -a lnargs
 	
 	# Iterate over shown lines
-	local -i max=$((bf_d[size-y] - (toplines + bottomlines) + 1))
+	local -i max=$((bf_d[size-y]))
 	for ((i = bf_d[base]; i - bf_d[base] < max; i++)); do
 	# if the line is last, do not add newline
 
@@ -2074,8 +1929,6 @@ function redraw {
 			   "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"\
 			   "$nlchar"
 	done
-	redraw-statusline
-	redraw-commandline
 	((no_cursor)) || redraw-cursor		
 	@ifs		
 	# redraw menu if open
@@ -2085,20 +1938,10 @@ function redraw {
 ## print-buffer-line
 function print-buffer-line {
 	IFS=''
+	# why this errors when stderr is redirected
 	local -n linearray="${bf_s[bf_d[line]]}"
 	printf '%s' "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"
 	@ifs
-}
-
-## redraw-menuline Redraws top menu line
-function redraw-menuline {
-	local -n top_0="menu_${bf_d[menuline]}_0"
-	printf "\e[0m\e[%s;%sH${faces[menu]}\e[?25l%*s\r%s"\
-		   "${bf_d[loc-y]}"\
-		   "${bf_d[loc-x]}"\
-		   "${bf_d[size-x]}"\
-		   "${bf_d[info]}"
-	printf '\e[%sG%s\e[0m\n' "${bf_d[loc-x]}" "${top_0[*]}"
 }
 
 # Draw cursor on the line
@@ -2152,46 +1995,6 @@ function redraw-cursor {
 	last_line=${bf_d[line]}
 }
 
-# Draw bottom mode/status line
-function redraw-statusline {
-	((options[mode-line])) &&
-		printf "\e[%s;%sH\e[%sG%b%s\e[%sG%s %b%s\e[m%b %d%% (%d,%d) (%s[%s]) (screen: %s) \e[m" \
-			   $((bf_d[size-y] - 1 + bf_d[loc-y]))\
-			   $((bf_d[size-x] + bf_d[loc-x]))\
-			   "${bf_d[loc-x]}"\
-			   "${faces[mode-line]}"\
-			   "$dashline"\
-			   "${bf_d[loc-x]}" \
-			   "${bf_d[mode]}"\
-			   "${faces[file-name]}"\
-			   "$(base-name "${bf_d[file]}")"\
-			   "${faces[mode-line]}"\
-			   $((100 * bf_d[line] / bf_d[length]))\
-			   "${bf_d[line]}"\
-			   "${bf_d[column]}"\
-			   "${highlight[${bf_d[filetype]}]}"\
-			   "${bf_d[filetype]}"\
-			   "$current_buffer"
-}
-
-# Draw bottomest command line message echo area
-function redraw-commandline {
-	# clear message if it has been printed before already
-	((options[keep-message]==0)) && 
-		((clrmsg)) && {
-			message=
-			clrmsg=0
-		} || clrmsg=1
-	if ((options[command-line])); then
-		printf "\e[%s;%sH\n${faces[minibuffer-prompt]}%*s\r%s\e[m" \
-			   $((LINES-1)) 1 $((COLUMNS)) ' ' "$message"
-	else
-		[ -n "$message" ] &&
-			printf "\e[%s;%sH%s" \
-				   $((LINES)) 1 "$message"
-	fi
-}
-
 ## handle-mouse
 # Handle mouse click
 function handle-mouse {
@@ -2213,10 +2016,9 @@ function handle-mouse {
 		y="${inputarray[2]::-1}"
 		#limitations of movenment
 		#TODO:
-		[ $y = "${bf_d[loc-y]}" ] && menuline-mouse $x && return #handle menuline
 		((x < (bf_d[number-length] + bf_d[loc-x] + 2))) && {
 			if [ "$mousemode" = '[<0' ]; then
-				bf_d[line]=$(( bf_d[base] + ( (y - bf_d[loc-y]) - toplines) ))
+				bf_d[line]=$(( bf_d[base] + (y - bf_d[loc-y]) ))
 				redraw
 			elif [ "$mousemode" = '[<2' ]; then #VERY BAD SOLUTION, TODO: FIX
 				clear-screen
@@ -2325,20 +2127,7 @@ function init-var {
 	format_tab=4
 
 	menuloc_y=0; menuloc_x=0 # menu positions
-	log info 'Setting menu-line'
-	toplines=${toplines:-0}
-	((toplines=toplines + options[menu-line]))
-
-	# this is reverse because the value is added to buffer redrawing size
-	log info 'Setting mode-line'
-	bottomlines=${bottomlines:-0}
-	((options[mode-line]==0)) && ((bottomlines--))
-	log info 'Setting command-line'
-	((options[command-line]==0)) && ((bottomlines--))
-	((bottomlines+=2))
 	
-	log-echo "toplines $toplines"
-	log-echo "bottomlines $bottomlines"
 	
 	log info 'Setting reset'
 	reset='\e[0;0m'
