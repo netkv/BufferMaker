@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11-WIP2"
+buffermaker_version="0.11-WIP3"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -1509,10 +1509,13 @@ fragment keepcolumn <<'+'
 	(( ${#bf_e[bf_d[line]]} > bckrl )) && bf_d[column]=${bckrl}
 +
 
+function move.previous-line.check ((bf_d[line] > 1))
+function move.next-line.check ((bf_d[line] < ${#buffer[@]}+bf_d[last-newline]))
+
 # Moves up \$1 lines, if \$ is empty move up 1 line
-function move-previous-line {
+function move.previous-line {
 	for ((i = 0; i < ${1:-1}; i++)); do
-		((bf_d[line] > 1)) && ((bf_d[line]--)) # As long as we can keep going up, go up
+		((bf_d[line] > 1)) && ((bf_d[line]--))
 		((bf_d[line] < bf_d[base] + 1)) && {
 			((bf_d[base]--)) # Push back the top if we need to
 			move_base=1 # Send signal to redraw.cursor that the buffer was moved, thus needs to be redraw fully
@@ -1525,9 +1528,9 @@ function move-previous-line {
 }
 
 # Moves down \$1 lines, if \$ is empty move down 1 line
-function move-next-line {
+function move.next-line {
 	for ((i = 0; i < ${1:-1}; i++)); do
-		((bf_d[line] < ${#buffer[@]}+1)) && ((bf_d[line]++)) # If we can go down, go down
+		((bf_d[line] < ${#buffer[@]}+bf_d[last-newline])) && ((bf_d[line]++))
 		# Move window down if needed
 		((bf_d[line] > bf_d[base] + bf_d[size-y] - 3)) && {
 			((bf_d[base]++))
@@ -1540,66 +1543,34 @@ function move-next-line {
 }
 
 function previous-line {
-	move-previous-line "$@"
-	if ((bf_d[selection])); then
-		redraw
-	else
-		redraw.cursor
-	fi
+	move.previous-line.check || return
+	hook pre-move
+	move.previous-line "$@"
+	hook move
+	redraw.cursor
 }
 function next-line {
-	move-next-line "$@"
-	if ((bf_d[selection])); then
-		redraw
-	else
-		redraw.cursor
-	fi
+	move.next-line.check || return
+	hook pre-move
+	move.next-line "$@"
+	hook move
+	redraw.cursor
 }
 function scroll-down {
-	move-previous-line $((bf_d[size-y] - 3))
-	if ((bf_d[selection])); then
-		redraw
-	else
-		redraw.cursor
-	fi
+	hook pre-move
+	move.previous-line $((bf_d[size-y] - 3))
+	hook move
+	redraw.cursor
 }
 function scroll-up {
-	move-next-line $((bf_d[size-y] - 3))
-	if ((bf_d[selection])); then
-		redraw
-	else
-		redraw.cursor
-	fi
+	hook pre-move
+	move.next-line $((bf_d[size-y] - 3))
+	hook move
+	redraw.cursor
 }
 	
 @fn move-beginning-of-line 'bf_d[column]=0; redraw'
 @fn move-end-of-line 'bf_d[column]="${#bf_e[${bf_d[line]}]}"; redraw'
-
-
-function move-select {
-	((bf_d[selection])) || {
-		bf_d[selection_start_y]="${bf_d[line]}"
-		bf_d[selection_start_x]="${bf_d[column]}"
-		bf_d[selection]=1
-	}
-}
-
-function select-forward {
-	move-select
-	forward-char
-}
-function select-backward {
-	move-select
-	backward-char
-}
-function select-next {
-	move-select
-	next-line
-}
-function select-previous {
-	move-select
-	previous-line
-}
 
 function forward-char {
 	for ((i = 0; i < ${1:-1}; i++)); do
@@ -1617,7 +1588,7 @@ function forward-char {
 	if ((bf_d[selection])); then
 		redraw
 	else
-		redraw.cursor-line
+		redraw-line.cursor
 	fi
 }
 
@@ -1641,7 +1612,7 @@ function backward-char {
 	if ((bf_d[selection])); then
 		redraw
 	else
-		redraw.cursor-line
+		redraw-line.cursor
 	fi
 }
 	
@@ -1785,9 +1756,19 @@ function redraw {
 
 ## hooks
 # stored in bf_h ass. array
-# naming scheme is '<function> <name>', function name is handled automatically when defining a hook
+# naming scheme is '<function> <name>', function name is handled automatically when defining a hook via @hook
 function @hook {
 	local name="${FUNCNAME[1]} $1"
+	shift
+	[ -n "${bf_h[${name}]}" ] && {
+		"${bf_h[${name}]}" "$@"
+		return 0
+	}
+	return 1
+}
+# common hooks, without function prefix
+function hook {
+	local name="$1"
 	shift
 	[ -n "${bf_h[${name}]}" ] && {
 		"${bf_h[${name}]}" "$@"
@@ -1923,7 +1904,7 @@ function print-buffer-line {
 }
 
 # Draw cursor on the line
-function redraw.cursor.line {
+function redraw-line.cursor {
 	((options[full-redraw]==0)) && {
 		# redraw if buffer needs to be moved horizontally
 		((bf_d[column] > bf_d[size-x] - bf_d[number-lenght] - space)) && {
@@ -1954,6 +1935,14 @@ function redraw.cursor {
 		   $y\
 		   $((bf_d[column] - bf_d[basecolumn] + bf_d[number-length] + bf_d[loc-x] + bf_d[number-space]))
 	last_line=${bf_d[line]}
+	@hook post-redraw
+}
+
+function cursor.hide {
+	printf '\e[?25l'
+}
+function cursor.show {
+	printf '\e[?25h'
 }
 
 ## keypress.mouse
