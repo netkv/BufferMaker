@@ -60,7 +60,15 @@ function load-default-config {
 		mode-options
 			:: else :
 			:: disable-global 1
-	
+
+	add-mode menu
+		:: '[up]' menu.up
+		:: '[down]' menu.down
+		:: 'RET' menu.select
+		mode-options
+			:: else menu.exit
+			:: disable-global 1
+
 	## Faces
 	#		Defined in escape codes
 	#		Helper functions:
@@ -379,8 +387,8 @@ function __ {
 	declare -gn "$2"="${_swap_copy_1}"
 }
 
-## @fn Shorthand for one line functions
-function @fn {
+## fn Shorthand for one line functions
+function fn {
 	[ -z "$*" ] && exit 1 # error if empty
 	local name="$1"
 	shift
@@ -607,12 +615,12 @@ function define-key {
 ## local-set-key
 # Sets keybinding of lastly defined mode
 # See define-key for details
-@fn local-set-key 'define-key "$_last_keys" "$@"'
+fn local-set-key 'define-key "$_last_keys" "$@"'
 
 ## global-set-key
 # Sets keybinding of global mode
 # See define-key for details
-@fn global-set-key 'define-key global "$@"'
+fn global-set-key 'define-key global "$@"'
 
 ## define-mode-option
 # Sets option of mode '$1'
@@ -622,10 +630,10 @@ function define-mode-option {
 }
 
 ## local-set-mode-option See define-mode-option
-@fn local-set-mode-option 'define-mode-option "$_last_keys" "$@"'
+fn local-set-mode-option 'define-mode-option "$_last_keys" "$@"'
 
 ## mode-options Brings mode-options of lastly defined mode into \"focus\"
-@fn mode-options '_last_add="mode-options"'
+fn mode-options '_last_add="mode-options"'
 
 ## add-highlight Sets highlighting mode '$1' for file types '$2...'
 function add-highlight {
@@ -637,10 +645,10 @@ function add-highlight {
 }
 
 ## set-alias Brings into \"focus\" highlight setting
-@fn set-highlight '_last_add=set-highlight'
+fn set-highlight '_last_add=set-highlight'
 
 ## clear-screen clears screen
-@fn clear-screen "printf '\033c'"
+fn clear-screen "printf '\033c'"
 
 ## add-mode
 # Adds keybing mode
@@ -658,7 +666,7 @@ function add-mode {
 function add-menu {
 	# create new menu function & array
 	log_buffer+=("        ADD MENU $1")
-	eval "function menu-${1} { menu $1; }"
+	eval "function @menu:${1} { menu $1; }"
 	declare -ag "menu_${1}_0"
 	declare -ag "menu_${1}_1"
 	_last_menu="$1"
@@ -666,16 +674,16 @@ function add-menu {
 }
 
 ## local-set-menu Sets \"focused\" menu item
-@fn local-set-menu 'define-menu "$_last_menu" "$1" "$2"'
+fn local-set-menu 'define-menu "$_last_menu" "$1" "$2"'
 
 ## global-set Brings into \"focus\" global mode
-@fn global-set '_last_add=global-set'
+fn global-set '_last_add=global-set'
 
 ## define-option Defines options[] buffer
-@fn define-option 'options["$1"]="$2"'
+fn define-option 'options["$1"]="$2"'
 
 ## set-options Brings into \"focus\" options setting
-@fn set-options '_last_add=set-options'
+fn set-options '_last_add=set-options'
 
 ## define-menu
 # Defines item in menu '$1' with name '$2' with command '$3'
@@ -949,7 +957,7 @@ function face-no-expand {
 }
 
 ## set-face Sets face for syntax highlighting
-@fn set-face 'syntax_face="$1"'
+fn set-face 'syntax_face="$1"'
 
 ## size-full
 # Sets size of buffer to be fullscreen
@@ -1008,7 +1016,7 @@ function list-directory {
 
 ## current-time
 # Basically like coreutil "'date'"
-@fn current-time 'printf "%($1)T\\n"'
+fn current-time 'printf "%($1)T\\n"'
 
 ## log
 # Adds message into log
@@ -1475,7 +1483,7 @@ function obj {
 	}
 }
 	
-@fn is-function 'declare -F -- "$1" > /dev/null'
+fn is-function 'declare -F -- "$1" > /dev/null'
 
 ## Dumps current buffer into a file	
 function dump-buffer {
@@ -1569,8 +1577,8 @@ function scroll-up {
 	redraw.cursor
 }
 	
-@fn move-beginning-of-line 'bf_d[column]=0; redraw'
-@fn move-end-of-line 'bf_d[column]="${#bf_e[${bf_d[line]}]}"; redraw'
+fn move-beginning-of-line 'bf_d[column]=0; redraw'
+fn move-end-of-line 'bf_d[column]="${#bf_e[${bf_d[line]}]}"; redraw'
 
 function forward-char {
 	for ((i = 0; i < ${1:-1}; i++)); do
@@ -1676,36 +1684,36 @@ function menuline-mouse {
 	}
 }
 # Redraw popup menu
-function redraw-menu {
+function redraw.menu {
 	printf '\e[?25l' # hide cursor (again)
-	printf '\e[%s;0H' $menuloc_y
+	printf '\e[%s;0H' "${bf_d[line]}" #$menuloc_y
 	for i in "${!menu_0[@]}"; {
 		if ((i == menuselection)); then
-			printf "\e[%sC${faces[menu-selected-face]}%s${reset}\n" $menuloc_x "${menu_0[i]}"  
+			printf "\e[%sC${faces[menu-selected-face]}%s${reset}\n" "${bf_d[column]}" "${menu_0[i]}"  
 		else
-	   		printf "\e[%sC${faces[menu-enabled-face]}%s${reset}\n" $menuloc_x "${menu_0[i]}"
+	   		printf "\e[%sC${faces[menu-enabled-face]}%s${reset}\n" "${bf_d[column]}" "${menu_0[i]}"
 		fi
 	}
 }
 
 
-function menuup {
+function menu.up {
 	((menuselection > 0)) && ((menuselection--));
-	redraw-menu;
+	redraw.menu;
 }
-function menudown {
+function menu.down {
 	((menuselection < ${#menu_0[@]} -1)) && ((menuselection++));
-	redraw-menu;
+	redraw.menu;
 }
 
 # Execute selected item in menu
-function menuselect
+function menu.select
 for i in "${!menu_1[@]}"; {
 	((i == menuselection)) && "${menu_1[i]}"
 }
 
 # Closes a menu
-function menuleave {
+function menu.exit {
 	ismenu=0
 	bf_d[mode]="${modebackup}"
 	redraw
@@ -1892,6 +1900,8 @@ function redraw.content {
 			   "$nlchar"
 	done
 	@ifs
+	# redraw menu if open
+	[ "${bf_d[mode]}" = 'menu' ] && redraw.menu
 }
 
 ## print-buffer-line
