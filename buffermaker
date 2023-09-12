@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11-WIP3"
+buffermaker_version="0.11"
 log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
@@ -85,10 +85,10 @@ default_faces=(
 		reset '\e[m'
 		default "$(:weight normal)"
 		menu "$(:background yellow :foreground black)"
-		menu-highlight '\e[4;30;43m'
-		menu-back '\e[4m\e[1m'
-		menu-enabled-face "$(:background yellow :foreground black)"
-		menu-selected-face "$(:background light-yellow :foreground black :weight bold)"
+		menu-divider '\e[4m'
+		menu-highlight '\e[4m\e[1m'
+		menu-enabled "$(:background yellow :foreground black)"
+		menu-selected "$(:background light-yellow :foreground black :weight bold)"
 		button "$(:foreground light-cyan)"
 		link '\e[4;96m'
 		link-highlight '\e[1;4;96m'
@@ -107,8 +107,6 @@ default_faces=(
 		#
 		TODO "$(:background magenta)"
 		NOTE "$(:background gray)"
-		mode-line "$(:background yellow :foreground black)"
-		file-name "$(:weight bold)"
 		# common colors for format stuff
 		black      '\e[30m' gray          '\e[90m'
 		red        '\e[31m' light-red     '\e[91m'
@@ -135,32 +133,6 @@ default_faces=(
 log_buffer+=('- LOADING BASH EXTENSIONS -')
 function @ifs { IFS="$DEFIFS"; }
 	
-# Make bash not be bashy enough
-function @doc {
-	mapfile -t "description_${desc_count}"
-	descriptions["function_${1}_description"]="description_${desc_count}"
-	((desc_count++))
-}
-
-# reverse of defun :D
-function nufed {
-	((_addfragment==1)) && {
-		@add '='
-		_addfragment=0
-	}
-	IFS=
-	local -a fn
-	local deffn="function $_function"$'\n'
-	mapfile fn <<<"$(declare -f '=')"
-	for ((i=1; i<${#fn[@]}; i++)) {
-		deffn+="${fn[i]}"
-	}
-	eval "$deffn"
-	_isdone=0
-	@ifs
-	unset '='
-}
-	
 function copy-function {
 	local -a fn
 	local deffn="function $2"$'\n'
@@ -171,60 +143,16 @@ function copy-function {
 	eval "$deffn"
 }
 
-function defun {
-	if [ -z "$1" ]; then
-		nufed
-	else
-		((desc_count++))
-		log_buffer+=("    DEFUN: $1")
-		((_isdone)) && nufed
-		_addfragment="${_pass_addfragment}"
-		descriptions["function_${1}_description"]="description_${desc_count}"
-		_function="$1"
-		_isdone=1
-		_last_add=add-doc
-	fi
-}
-
 function ::
 case "$_last_add" in
 	add-menu) local-set-menu "$@";;
 	set-highlight) add-highlight "$@";;
 	global-set) global-set-key "$@";;
 	set-options) define-option "$@";;
-	add-doc) add-doc "$@";;
 	add-mode) local-set-key "$@";;
 	mode-options) local-set-mode-option "$@";;
 	set-buffer) local-set-buffer-data "$@"
 esac
-
-function add-doc {
-	local -n cdoc="description_${desc_count}"
-	cdoc+=("${_indent}$*")
-}
-function doc {
-	((desc_count++))
-	descriptions["function_${1}_description"]="description_${desc_count}"
-	_function="$1"
-	_last_add=add-doc
-	_indent=''
-	shift
-	[ -n "$*" ] &&
-		:: "$*"
-}
-copy-function doc @@
-
-## Add documentation indent
-function :+ {
-	_indent+="    "
-	# "$*"
-}
-## :- Remove documentation indent
-function :- {
-	_indent="${_indent:0:${#_indent}-4}"
-	# "$*"
-}
-# hell
 
 ## focus set magic # function
 function focus {
@@ -289,76 +217,6 @@ function [auto] {
 	[ -z "${bf_d[size-x]}" ] && bf_d[size-x]=$COLUMNS
 	[ -z "${bf_d[size-y]}" ] && bf_d[size-y]=$((LINES - 1))
 	[ -z "${bf_d[syntax]}" ] && set-syntax 
-}
-
-## defun-fragment Same as defun but includes fragments for the function
-function defun-fragment {
-	_pass_addfragment=1
-	defun "$@"
-}
-
-# fragments act basically like macros but with cooler name
-# see redraw-buffer function for example usage
-## fragment Creates a function-insertable macro
-function fragment {
-	log_buffer+=("        FRAGMENT: $1")
-	declare -ag "_fragment_$1"
-	mapfile "_fragment_$1"
-}
-	
-## @add Adds fragment to a function
-function @add {
-	local -a _add_fn
-	local -a _add_nfn
-	local -i _add_f
-	local -i _add_hf
-	local _add_nfnline
-	mapfile _add_fn < <(declare -f -- "$1")
-	IFS=' '
-	for _add_l in "${!_add_fn[@]}"; {
-		_add_f=0
-		_add_hf=0
-		_add_nfnline=
-		for _add_w in ${_add_fn[_add_l]}; {
-			if [ "$_add_w" = '@' ]; then
-				_add_f=1
-			elif ((_add_f)); then
-				_add_f=0
-				_add_hf=1
-				local -n _add_fragment="_fragment_${_add_w//[^[:alnum:]]/}"
-				for _add_l1 in "${!_add_fragment[@]}"; {
-					_add_nfnline+=" ${_add_fragment[_add_l1]}"
-				}
-			else
-				_add_nfnline+=" $_add_w"
-			fi
-		}
-		((_add_hf)) || _add_nfn+="${_add_fn[_add_l]}"
-		((_add_hf)) && _add_nfn+="$_add_nfnline"
-	}
-	eval "${_add_nfn[*]}"
-}
-
-## @def Defines a function template
-function @def {
-	local -n _tpl="_template_$1"
-	local _fn
-	local -i _n=0
-	shift
-	for _w in $_tpl; {
-		case "$_w" in
-			'@var')
-				_n=1;;
-			*)
-				((_n)) && {
-					_n=0
-					_fn+="${!_w} "
-					continue
-				}
-				_fn+="$_w "
-		esac
-	}
-	eval "$_fn"
 }
 
 ## _ Variable refernce helper
@@ -537,25 +395,10 @@ function kbd {
 	local in
 	local -i ch=1
 	# Surely there is better solution...
-	case "$1" in
-		C-a) printf '1 0' ;; C-b) printf '2 0' ;;
-		C-c) printf '3 0' ;; C-d) printf '4 0' ;;
-		C-e) printf '5 0' ;; C-f) printf '6 0' ;;
-		C-g) printf '7 0' ;; C-h) printf '8 0' ;;
-		C-i) printf '9 0' ;; C-j) printf 'a 0' ;;
-		C-k) printf 'b 0' ;; C-l) printf 'c 0' ;;
-		C-m) printf 'd 0' ;; C-n) printf 'e 0' ;;
-		C-o) printf 'f 0' ;; C-p) printf '10 0';;
-		C-q) printf '11 0';; C-r) printf '12 0';;
-		C-s) printf '13 0';; C-t) printf '14 0';;
-		C-u) printf '15 0';; C-v) printf '16 0';;
-		C-w) printf '17 0';; C-x) printf '18 0';;
-		C-y) printf '19 0';; C-z) printf '1a 0';;
-		*)  ch=0
-			case "${1:0:2}" in
-				M-) in="${1:2:1}";;
-				*) in="$1"
-			esac
+	ch=0
+	case "${1:0:2}" in
+		M-) in="${1:2:1}";;
+		*) in="$1"
 	esac
 	((ch)) && return
 	echo "$in" | {
@@ -580,6 +423,20 @@ function kbd {
 function define-key {
 	local -n keys="keys_$1"
 	case "$2" in
+		#control
+		C-a) keys[1 0]="$3" ;; C-b) keys[2 0]="$3" ;;
+		C-c) keys[3 0]="$3" ;; C-d) keys[4 0]="$3" ;;
+		C-e) keys[5 0]="$3" ;; C-f) keys[6 0]="$3" ;;
+		C-g) keys[7 0]="$3" ;; C-h) keys[8 0]="$3" ;;
+		C-i) keys[9 0]="$3" ;; C-j) keys[a 0]="$3" ;;
+		C-k) keys[b 0]="$3" ;; C-l) keys[c 0]="$3" ;;
+		C-m) keys[d 0]="$3" ;; C-n) keys[e 0]="$3" ;;
+		C-o) keys[f 0]="$3" ;; C-p) keys[10 0]="$3";;
+		C-q) keys[11 0]="$3";; C-r) keys[12 0]="$3";;
+		C-s) keys[13 0]="$3";; C-t) keys[14 0]="$3";;
+		C-u) keys[15 0]="$3";; C-v) keys[16 0]="$3";;
+		C-w) keys[17 0]="$3";; C-x) keys[18 0]="$3";;
+		C-y) keys[19 0]="$3";; C-z) keys[1a 0]="$3";;
 		#function keys
 		'[f1]') keys[1b 4f 50 0]="$3";;
 		'[f2]') keys[1b 4f 51 0]="$3";;
@@ -661,21 +518,6 @@ function add-mode {
 	declare -Ag "key_options_$1"
 }
 
-## add-menu
-# Adds menu
-function add-menu {
-	# create new menu function & array
-	log_buffer+=("        ADD MENU $1")
-	eval "function @menu:${1} { menu $1; }"
-	declare -ag "menu_${1}_0"
-	declare -ag "menu_${1}_1"
-	_last_menu="$1"
-	_last_add='add-menu'
-}
-
-## local-set-menu Sets \"focused\" menu item
-fn local-set-menu 'define-menu "$_last_menu" "$1" "$2"'
-
 ## global-set Brings into \"focus\" global mode
 fn global-set '_last_add=global-set'
 
@@ -685,19 +527,58 @@ fn define-option 'options["$1"]="$2"'
 ## set-options Brings into \"focus\" options setting
 fn set-options '_last_add=set-options'
 
-## define-menu
-# Defines item in menu '$1' with name '$2' with command '$3'
-# '    If command is "menu-top_menu" face menu-back is used.'
-function define-menu {
+function menu.add {
+	# create new menu function & array
+	eval "function @menu:${1} { menu $1; }"
+	declare -ag "menu_${1}_0"
+	declare -ag "menu_${1}_1"
+	declare -ag "menu_${1}_2"
+
 	local -n menu_0="menu_${1}_0"
 	local -n menu_1="menu_${1}_1"
-	local item_0
-	case "$3" in
-		'menu-top_menu') item_0="$(printf '%b' "${faces[menu-back]}")$2";;
-		*) item_0="$2"
-	esac
-	menu_0+=("$item_0")
-	menu_1+=("$3")
+	local -n menu_1="menu_${1}_2"
+
+	local -i c=-1
+	local type
+	
+	local -n menu="$1"
+	for i in "${menu[@]}"; do
+		case "$i" in
+			't:'|'text:')
+				type=text
+				((c++))
+				continue;;
+			'c:'|'cmd:'|'command:')
+				type=command
+				continue;;
+			'f:'|'face:')
+				type=face
+				continue	
+		esac
+		case "$type" in
+			'text')
+				menu_0[c]+=" $i"
+				;;
+			'command')
+				menu_1[c]+="$i "
+				;;
+			'face')
+				menu_2[c]+="$i"
+		esac
+	done
+	menu.layout "$1"
+}
+function menu.layout {
+	local -n menu_0="menu_${1}_0"
+	local -i max=0
+	for i in "${menu_0[@]}"; do
+		((${#i} > max)) && max="${#i}"
+	done
+	for i in "${!menu_0[@]}"; do
+		for ((l=$((max - ${#menu_0[i]})) + 1; l>0; l--)); do
+			menu_0[i]+=' '
+		done
+	done
 }
 
 ## load-theme Loads theme from array
@@ -716,43 +597,6 @@ function load-theme {
 		}
 	}
 	((t)) && errno=1 die
-	# aliases for nicer formating
-	faces+=(
-		[bl]="${faces[black]}"
-		[dr]="${faces[red]}"
-		[dg]="${faces[green]}"
-		[dy]="${faces[yellow]}"
-		[db]="${faces[blue]}"
-		[dm]="${faces[magenta]}"
-		[dc]="${faces[cyan]}"
-		[dw]="${faces[light-gray]}"
-		[gr]="${faces[gray]}"
-		[lr]="${faces[light-red]}"
-		[lg]="${faces[light-green]}"
-		[ly]="${faces[light-yellow]}"
-		[lb]="${faces[light-blue]}"
-		[lm]="${faces[light-magenta]}"
-		[lc]="${faces[light-cyan]}"
-		[lw]="${faces[light-white]}"
-	)
-	faces_raw+=(
-		[bl]="${faces_raw[black]}"
-		[dr]="${faces_raw[red]}"
-		[dg]="${faces_raw[green]}"
-		[dy]="${faces_raw[yellow]}"
-		[db]="${faces_raw[blue]}"
-		[dm]="${faces_raw[magenta]}"
-		[dc]="${faces_raw[cyan]}"
-		[dw]="${faces_raw[light-gray]}"
-		[gr]="${faces_raw[gray]}"
-		[lr]="${faces_raw[light-red]}"
-		[lg]="${faces_raw[light-green]}"
-		[ly]="${faces_raw[light-yellow]}"
-		[lb]="${faces_raw[light-blue]}"
-		[lm]="${faces_raw[light-magenta]}"
-		[lc]="${faces_raw[light-cyan]}"
-		[lw]="${faces_raw[light-white]}"
-	)
 }
 
 ## rest of this garbageware
@@ -1507,15 +1351,9 @@ function die {
 }
 
 # Sets \$nocleanup to 1 and dies	
-function abort {
+function die.force {
 	((nocleanup=1)) && die "$@"
 }
-
-fragment keepcolumn <<'+'
-	[ -z "$bckrl" ] && bckrl="${bf_d[column]}"	
-	(( ${#bf_e[bf_d[line]]} < bf_d[column] )) && bf_d[column]=${#bf_e[bf_d[line]]}
-	(( ${#bf_e[bf_d[line]]} > bckrl )) && bf_d[column]=${bckrl}
-+
 
 function move.previous-line.check ((bf_d[line] > 1))
 function move.next-line.check ((bf_d[line] < ${#buffer[@]}+bf_d[last-newline]))
@@ -1657,41 +1495,22 @@ function backward-word {
 }
 
 
-@doc to-line <<'+'
-Move cursor to line number $1 and move the line into middle of visible buffer area.
-+
+#Move cursor to line number $1 and move the line into middle of visible buffer area.
 function to-line {
 	bf_d[line]="$1"
 	bf_d[base]=$((bf_d[line] - bf_d[size-y] / 2 ))
 	redraw
 }
-			
-# Handle clicking on top menu with mouse		
-function menuline-mouse {
-	local -n top_0="menu_${bf_d[menuline]}_0"
-	local -n top_1="menu_${bf_d[menuline]}_1"
-	#determine which item should be triggered
-	[ -z "$1" ] && menuloc_x=0 || menuloc_x=$1
-	local cx="${bf_d[loc-x]}"
-	i=0
-	for i in "${!top_0[@]}"; {
-		la="${#top_0[i]}"
-		((menuloc_x>cx)) && ((menuloc_x<(cx + la + 1))) && {
-			${top_1[$i]}
-			return
-		}
-		cx=$(( cx + la + 1 ))
-	}
-}
+
 # Redraw popup menu
 function redraw.menu {
 	printf '\e[?25l' # hide cursor (again)
 	printf '\e[%s;0H' "${bf_d[line]}" #$menuloc_y
 	for i in "${!menu_0[@]}"; {
 		if ((i == menuselection)); then
-			printf "\e[%sC${faces[menu-selected-face]}%s${reset}\n" "${bf_d[column]}" "${menu_0[i]}"  
+			printf "\e[%sC%b%s${reset}\n" "${bf_d[column]}" "${faces[menu-selected]}${faces_raw[${menu_2[i]:-menu-selected}]}" "${menu_0[i]}"
 		else
-	   		printf "\e[%sC${faces[menu-enabled-face]}%s${reset}\n" "${bf_d[column]}" "${menu_0[i]}"
+			printf "\e[%sC%b%s${reset}\n" "${bf_d[column]}" "${faces[menu-enabled]}${faces_raw[${menu_2[i]:-menu-enabled}]}" "${menu_0[i]}"
 		fi
 	}
 }
@@ -1709,7 +1528,7 @@ function menu.down {
 # Execute selected item in menu
 function menu.select
 for i in "${!menu_1[@]}"; {
-	((i == menuselection)) && "${menu_1[i]}"
+	((i == menuselection)) && ${menu_1[i]}
 }
 
 # Closes a menu
@@ -1723,6 +1542,7 @@ function menu.exit {
 function menu {
 	declare -ng menu_0=menu_${1}_0
 	declare -ng menu_1=menu_${1}_1
+	declare -ng menu_1=menu_${1}_2
 	((ismenu == 0 )) && modebackup="${bf_d[mode]}"
 	ismenu=1
 	declare -ig menuselection=0
@@ -2085,9 +1905,6 @@ function init-var {
 	trap quit SIGTERM
 
 	format_tab=4
-
-	menuloc_y=0; menuloc_x=0 # menu positions
-	
 	
 	log info 'Setting reset'
 	reset='\e[0;0m'

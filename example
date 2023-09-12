@@ -3,12 +3,12 @@ source buffermaker
 ## Example of buffermaker tui program
 
 add-mode testui
-	:: '[left]' format-left
-	:: '[up]' format-up
-	:: '[right]' format-right
-	:: '[down]' format-down
-	:: 'RET' link-enter
-	:: "$(kbd C-c)" 'die'
+	:: [left] format-left
+	:: [up] format-up
+	:: [right] format-right
+	:: [down] format-down
+	:: RET link-enter
+	:: C-c die
 	:: "$(kbd k)" previous-line
 	:: "$(kbd j)" next-line
 	mode-options
@@ -44,7 +44,7 @@ function show-more {
 '<o> id: setnum select: set-number redraw right: obj menu left: : up: show-less down: show-less '\
 'text: <f> link Set number </f> '\
 '</o> '\
-'<o> id: menu select: @menu:zero right: obj close left: obj setnum up: show-less down: show-less '\
+'<o> id: menu select: menu zero right: obj close left: obj setnum up: show-less down: show-less '\
 'text: <f> menu menu </f> '\
 '</o> '\
 '<o> id: close select: show-less left: obj menu right: : up: show-less down: show-less '\
@@ -64,17 +64,36 @@ function show-less {
 
 incnum=0
 
-add-menu zero
-	:: 'zero    ' set1
-	:: 'hundred ' set2
-	:: 'thousand' set3
-	:: 'million ' set4
-	:: 'die     ' die
+zero=(
+	text: Menu
+		face: menu-highlight
+	text: Zero
+		cmd: number-set 0
+	text: One
+		cmd: number-set 1
+	text: Ten
+		cmd: number-set 10
+	text: Hundred
+		cmd: number-set 100
+	text: Thousand
+		cmd: number-set 1000
+	text: Million
+		cmd: number-set 1000000
+		face: menu-divider
+	text: Close
+		cmd: menu.exit
+	text: Quit
+		cmd: die
+)
+menu.add zero
 
-fn set1 'menu.exit; incnum=1; make-render-line 3; redraw'
-fn set2 'menu.exit; incnum=100; make-render-line 3; redraw'
-fn set3 'menu.exit; incnum=1000; make-render-line 3; redraw'
-fn set4 'menu.exit; incnum=1000000; make-render-line 3; redraw'
+
+function number-set {
+	menu.exit
+	incnum="$1"
+	make-render-line 3
+	redraw
+}
 	
 buffer=(
 ''
