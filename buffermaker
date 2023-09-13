@@ -1,6 +1,5 @@
 #!/bin/bash
 buffermaker_version="0.11"
-log_buffer+=('' 'START')
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -9,12 +8,11 @@ shopt -s extglob # Ensure advanced pattern matching is available
 shopt -s checkwinsize && (:;:) # Enable and then trigger a terminal size refresh
 
 declare -r DEFIFS="$IFS"
-declare -A highlight faces faces_raw options charmap descriptions
+declare -A highlight faces faces_raw options charmap hooks
 declare -A keys_global
-declare -a k_hex buffers_l log_buffer modes=('keys_global')
+declare -a k_hex buffers_l modes=('keys_global')
 declare -n buffer bf_s bf_e bf_d
-declare -i menuloc_x menuloc_y hidden ismenu comment current_count _isdone
-declare -n menucon
+declare -i hidden ismenu comment current_count
 declare message reset readin
 
 function load-default-config {
@@ -36,8 +34,6 @@ function load-default-config {
 		[empty-line-char]=''
 		[tabchar]='    '
 		[keep-message]=0
-		[log]=0
-		[log-functions]=0
 		[tty-linuxfb]=1 # enable truecolor support for framebuffer
 		[full-redraw]=0 # redraws whole buffer, can fix artifacting in linuxfb at cost of performance
 		[esc-to-meta]=0
@@ -63,7 +59,11 @@ function load-default-config {
 
 	add-mode menu
 		:: '[up]' menu.up
+		:: "$(kbd k)" menu.up
+		:: 'C-p' menu.up
 		:: '[down]' menu.down
+		:: "$(kbd j)" menu.down
+		:: 'C-n' menu.down
 		:: 'RET' menu.select
 		mode-options
 			:: else menu.exit
@@ -130,7 +130,6 @@ default_faces=(
 }
 
 ## syntaxy sugar sugary syntax
-log_buffer+=('- LOADING BASH EXTENSIONS -')
 function @ifs { IFS="$DEFIFS"; }
 	
 function copy-function {
@@ -510,7 +509,6 @@ fn clear-screen "printf '\033c'"
 ## add-mode
 # Adds keybing mode
 function add-mode {
-	log_buffer+=("        ADD MODE $1")
 	_last_keys="$1"
 	_last_add='add-mode'
 	modes+=("keys_$1")
@@ -817,7 +815,6 @@ function size-full {
 ## set-buffer
 # Switch to buffer \$1 
 function set-buffer {
-	log info "switch to buffer [$1]"
 	current_buffer="$1"
 	declare -ng buffer="${current_buffer}_buffer"
 	declare -ng bf_s="${current_buffer}_bf_s"
@@ -830,7 +827,6 @@ function set-buffer {
 ## add-to-list
 # Adds a buffer into currently active buffer list
 function add-to-list {
-	log info "added into buffer list: $current_buffer"
 	buffers_l+=("$current_buffer")
 }
 
@@ -861,45 +857,6 @@ function list-directory {
 ## current-time
 # Basically like coreutil "'date'"
 fn current-time 'printf "%($1)T\\n"'
-
-## log
-# Adds message into log
-# '    info -- everything *should* be well'
-# '    warn -- something is wrong but it *should* not break entire Ebashs'
-# '    error -- something is wrong and anything can break, but it *can* still run(?)'
-# '    fatal -- something is mega wrong and only thing left to do is to die'
-# Is disabled when log wasn\'t initialised, see init-log for info
-function log {
-	((log)) || return
-	local type="$1"
-	shift
-	tooktime="$(( $(current-time '%s') - lasttime ))"
-	bufferlog+=("<f> title [$type] </f> <f> font-lock-comment-face ${tooktime}s </f> <f> name [${FUNCNAME[1]}] </f> $*")
-	lasttime="$(current-time '%s')"
-}
-
-## log-echo
-# Adds message into log without any special formating	
-function log-echo {
-	((log)) || return
-	bufferlog+=("<f> font-lock-comment-face > </f>    $*")
-}
-
-## debug
-# +debug -- basically like set -x but reports stuff into log
-## +log	
-# Debug function to add logging to function it\'s called from
-function +log {
-	((log)) || return
-	((options[log-functions])) && log '*' "${FUNCNAME[1]}"
-	trap 'log bash $? $LINENO ${BASH_COMMAND}' ERR
-}
-## +debug
-# Debug function to add extensive \(set -x like\) logging to function it\'s called from
-function +debug {
-	((log)) || return
-	trap 'log DEBUG "${BASH_COMMAND}"' DEBUG
-}
 
 ## goto Load array into buffer
 function goto {
@@ -1343,10 +1300,10 @@ function dump-buffer {
 # Else restore to sane mode 
 function die {
 	((nocleanup)) && exit "${errno:-0}"
-	${on_die:-true}
 	echo -e "\e[?1000;1006;1015l" #disable mouse tracking
 	clear-screen # TODO fix the buffer switching
 	printf '\e[?25h\e[?7h\e[?1049l' # Reset terminal to sane mode
+	global-hook die
 	exit "${errno:-0}" # Assume that we are exiting without an error
 }
 
@@ -1589,7 +1546,7 @@ function @hook {
 	local name="${FUNCNAME[1]} $1"
 	shift
 	[ -n "${bf_h[${name}]}" ] && {
-		"${bf_h[${name}]}" "$@"
+		${bf_h[${name}]} "$@"
 		return 0
 	}
 	return 1
@@ -1599,7 +1556,17 @@ function hook {
 	local name="$1"
 	shift
 	[ -n "${bf_h[${name}]}" ] && {
-		"${bf_h[${name}]}" "$@"
+		${bf_h[${name}]} "$@"
+		return 0
+	}
+	return 1
+}
+# global hooks, shared in every buffer
+function global-hook {
+	local name="$1"
+	shift
+	[ -n "${hooks[${name}]}" ] && {
+		${hooks[${name}]} "$@"
 		return 0
 	}
 	return 1
@@ -1895,20 +1862,13 @@ function keypress {
 }
 
 function init-var {
-	((options[log])) && init-log || unset buffer_log # set up log buffer (M-x log)
-
-
-	log info setting traps...
 	trap change-size-screen WINCH ALRM # Attach WINCH and ALRM to redraw the screen
 	trap die EXIT HUP USR1 # Attach most exit codes to cleanup and exit
 	trap 'k_hex=(3 0); keypress' INT
 	trap quit SIGTERM
 
 	format_tab=4
-	
-	log info 'Setting reset'
 	reset='\e[0;0m'
-	log info 'Setting charmap'
 	charmap=(
 		#[0] is reserved for any unmapped char
 		[	]='t' # tab
@@ -1919,10 +1879,8 @@ function init-var {
 	else
 		esc_timeout=0.01
 	fi
-	log info 'Setting nlchar'
 	nlchar='\n'
 	printf '\e[?1049h'
-	log info 'Setting mouse'
 	((options[mouse])) && echo -ne "\e[?1000;1006;1015h" #enable mouse tracking
 }
 

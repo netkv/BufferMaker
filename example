@@ -115,6 +115,9 @@ buffer=(
 '<o> id: quit select: die right: : left: down: : up: obj inc text: <f> red Quit </f> </o>'
 )
 
+stty -echo
+hooks[die]='stty echo'
+
 load-default-config
 init-var
 set-linenum
