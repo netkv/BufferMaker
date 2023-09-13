@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11"
+buffermaker_version="0.11.1"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
