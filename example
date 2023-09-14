@@ -97,9 +97,9 @@ function number-set {
 	
 buffer=(
 ''
-'<h> Super number counter </h>'
+'<lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-self_size[-2]/2 </lp>'
 ''
-'<-> <f> highlight <v> incnum </f>'
+'<-> <f> highlight &bold-line <v> incnum &bold-line </f>'
 ''
 # controls
 '<o> id: inc select: inc redraw right: obj dec left: : up: : down: obj quit '\
@@ -120,6 +120,6 @@ hooks[die]='stty echo'
 
 load-default-config
 init-var
-set-linenum
+#set-linenum
 redraw
 input-loop

@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.1"
+buffermaker_version="0.11.2"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -8,7 +8,7 @@ shopt -s extglob # Ensure advanced pattern matching is available
 shopt -s checkwinsize && (:;:) # Enable and then trigger a terminal size refresh
 
 declare -r DEFIFS="$IFS"
-declare -A highlight faces faces_raw options charmap hooks
+declare -A highlight faces faces_raw options charmap hooks resources
 declare -A keys_global
 declare -a k_hex buffers_l modes=('keys_global')
 declare -n buffer bf_s bf_e bf_d
@@ -81,7 +81,7 @@ function load-default-config {
 	#			:background & :foreground
 	#				either hex. colour, colour name, or c<index> for 256 indexed colours
 	#		See extensions/gruvboxdark for another example
-default_faces=(
+	default_faces=(
 		reset '\e[m'
 		default "$(:weight normal)"
 		menu "$(:background yellow :foreground black)"
@@ -125,8 +125,16 @@ default_faces=(
 		bg-magenta    '\e[45m' bg-light-magenta '\e[105m'
 		bg-cyan       '\e[46m' bg-light-cyan    '\e[106m'
 		bg-light-gray '\e[47m' bg-white         '\e[107m'
-)
+	)
 	load-theme default_faces
+
+	resources=(
+		[&]='&'
+		[line]='─'
+		[bold-line]='━'
+		[column]='│'
+		[bold-column]='┃'
+	)
 }
 
 ## syntaxy sugar sugary syntax
@@ -683,6 +691,7 @@ function make-render-line {
 	linearray=()
 	bckeIFS="${IFS}"
 	IFS=
+	local -a self_size
 	case "${bf_d[render-type]}" in
 		'per-char') make-render-line-loop-char;;
 		'per-word') make-render-line-loop;;
@@ -1011,21 +1020,6 @@ function syntax-format {
 		sethighlight=2
 		return
 	}
-	((space_next==1)) && {
-		space_next=0
-		skip_next_space=1
-		for ((if=0; if< word; if++)) {
-			linearray+=(' ')
-			bf_e[line]+='s'
-			((column++))
-		}
-		return
-	}
-	[ "$word" = '<s>' ] && {
-		space_next=1
-		skip_next_space=1
-		return
-	}
 	[ "$word" = '<tab>' ] || [ "$word" = '<->' ] && {
 		skip_next_space=1
 		for ((if=0; if< format_tab; if++)) {
@@ -1205,11 +1199,86 @@ function syntax-format {
 		set_obj=0
 		return
 	}
+	[ "$word" = '<lp>' ] && {
+		self_size+=('')
+		pad=3
+		skip_next_space=1
+		return
+	}
+	((pad==3)) && {
+		case "$word" in
+			'&s'|'&space'|'<s>') padchar=' ';;
+			'&'*) padchar="${resources[${word:1}]}";;
+			*) padchar="$word"
+		esac
+		pad=2
+		skip_next_space=1
+		return
+	}
+	((pad==2)) && {
+		expression="$word"
+		pad=1
+		#skip_next_space=1
+		return
+	}
+	[ "$word" = '</lp>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		local -i x="${bf_d[size-x]}"
+		local -i s="${self_size[-1]}"
+		padnum=$(($expression))
+		for ((; padnum>0; padnum--)); do
+			face-no-expand "${facename:-${bf_d[background]:-default}}" "$padchar"
+			bf_e[line]+='s'
+		done						
+		pad=0
+		local wordspace=' '
+		for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+			((pli+2==${#padlist[@]})) && {
+				wordspace=''
+			}	
+			face "${padlist[pli]}" "${padlist[pli+1]}${wordspace}"
+		done
+		padlist=()
+		return
+	}
+
+	[ "$word" = '<x>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		skip_next_space=1
+		return
+	}
 	
+	((space_next==1)) && {
+		space_next=0
+		skip_next_space=1
+		for ((if=0; if< word; if++)) {
+			linearray+=(' ')
+			bf_e[line]+='s'
+			((column++))
+		}
+		return
+	}
+	[ "$word" = '<s>' ] && {
+		space_next=1
+		skip_next_space=1
+		return
+	}
+
+	[[ "$word" == '&'* ]] && word="${resources[${word:1}]}"
 	((newline==1)) && newline=0
 	((column+=${#ichar} + ${#word}))
 	((upper==1)) && {
 		word="${word^^}"
+	}
+	((pad==1)) && {
+		padlist+=(
+			"${facename:-unknown}" "${ichar}$word"
+		)
+		self_size[-1]=$((self_size[-1] + ${#word} + 1))
+		skip_next_space=1
+		return
 	}
 	face "${facename:-unknown}" "${ichar}$word"
 }
