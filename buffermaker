@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.2"
+buffermaker_version="0.11.2.1"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -95,6 +95,7 @@ function load-default-config {
 		title "$(:weight bold)"
 		highlight "$(:weight bold :foreground light-red)"
 		dim "$(:weight dim)"
+		divider "$(:foreground gray)"
 		name "$(:foreground magenta)"
 		hint "$(:foreground light-yellow)"
 		hint-highlight '\e[4;93m'
@@ -134,6 +135,14 @@ function load-default-config {
 		[bold-line]='━'
 		[column]='│'
 		[bold-column]='┃'
+		[angle-down-right]='┌'
+		[bold-angle-down-right]='┏'
+		[angle-down-left]='┐'
+		[bold-angle-down-left]='┓'
+		[angle-up-right]='└'
+		[bold-angle-up-right]='┗'
+		[angle-up-left]='┘'
+		[bold-angle-up-left]='┛'
 	)
 }
 

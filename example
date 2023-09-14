@@ -3,14 +3,16 @@ source buffermaker
 ## Example of buffermaker tui program
 
 add-mode testui
-	:: [left] format-left
-	:: [up] format-up
-	:: [right] format-right
-	:: [down] format-down
+	:: '[left]' format-left
+	:: '[up]' format-up
+	:: '[right]' format-right
+	:: '[down]' format-down
 	:: RET link-enter
 	:: C-c die
 	:: "$(kbd k)" previous-line
 	:: "$(kbd j)" next-line
+	:: "$(kbd l)" forward-char
+	:: "$(kbd h)" backward-char
 	mode-options
 		:: else :
 
@@ -97,7 +99,7 @@ function number-set {
 	
 buffer=(
 ''
-'<lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-self_size[-2]/2 </lp>'
+'<f> divider <lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-self_size[-2]/2 </lp> </f>'
 ''
 '<-> <f> highlight &bold-line <v> incnum &bold-line </f>'
 ''
@@ -105,21 +107,118 @@ buffer=(
 '<o> id: inc select: inc redraw right: obj dec left: : up: : down: obj quit '\
 'text: <f> link Increase </f> '\
 '</o> '\
-'<o> id: dec select: dec left: obj inc right: obj more up: : down: obj quit '\
+'<o> id: dec select: dec left: obj inc right: obj more up: : down: obj next '\
 'text: <f> link Decrease </f> '\
 '</o> '\
-'<o> id: more select: show-more left: obj dec right: : up: : down: obj quit '\
+'<o> id: more select: show-more left: obj dec right: : up: : down: obj next '\
 'text: <f> title ... </f> '\
 '</o>'
 # quit button
-'<o> id: quit select: die right: : left: down: : up: obj inc text: <f> red Quit </f> </o>'
+'<o> id: quit select: die right: obj next left: : down: : up: obj inc text: <f> red Quit </f> </o> '\
+'<o> id: next select: next-test right: : left: obj quit down: : up: obj dec text: <f> link Next </f> </o>'
 )
 
+################################################################################
+#                              Format section                                  #
+################################################################################
+version_lenght=${#buffermaker_version}
+function next-test {
+	set-buffer formats
+	redraw
+}
+declare-buffer formats
+bf_d+=(
+	[line]=1
+	[column]=0
+	[mode]=testui
+	[filetype]='format'
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+buffer=(
+''
+'<lp> - 0 '\
+'<o> id: previous select: previous-test text: <f> link Previous </f> </o> </lp> <x> '\
+'<f> divider <lp> &line x/2-s/2-self_size[-2] <h> Formating </h> </lp> <x> '\
+'<lp> &line x/2-self_size[-2]/2-version_lenght+2 </lp> <x> '\
+'<f> hint <v> buffermaker_version </f> </f> '
+''
+"<-> This is a showcase of Buffermaker's integrated formating language."
+''
+'<-> <\> <lp> (left-pad), <\> <f> (face), <\> <h> (header), <\> <x> (delete-last), <\> (escape) showcase:'
+''
+'<f> divider &angle-down-right <x> <lp> &line 16*6 </lp> <x> &angle-down-left </f>'
+'<f> divider &column </f> <lp> &space 0 <h> pseudo-Table </h> </lp> <x> '\
+'<lp> &space 16*6-self_size[-2] <f> divider &column </f> </lp>'
+'<f> divider &column <x> <lp> &space 16*6 &column </lp> </f>'
+'<f> divider &column </f> <f> title '\
+'<lp> &space 0 id </lp> '\
+'<lp> &space 16-self_size[-2] number </lp> '\
+'<lp> &space 16-self_size[-2] amount </lp> '\
+'<lp> &space 16-self_size[-2] cost </lp> '\
+'<lp> &space 16-self_size[-2] date </lp> '\
+'<x> <lp> &space 32-self_size[-2] <f> divider &column </f> </lp> '\
+'</f>'
+)
+for i in {0..16}; do
+	buffer+=(
+"<f> divider &column </f> <lp> &space 0 $RANDOM <f> dim random </f> </lp> "\
+"<lp> &space 16-self_size[-2] $RANDOM </lp> "\
+"<lp> &space 16-self_size[-2] ${RANDOM}% </lp> "\
+"<lp> &space 16-self_size[-2] \$$RANDOM </lp> "\
+"<lp> &space 16-self_size[-2] $RANDOM/$RANDOM/$RANDOM </lp> "\
+'<x> <lp> &space 32-self_size[-2] <f> divider &column </f> </lp>'
+	)
+done
+buffer+=(
+'<f> divider &angle-up-right <x> <lp> &line 16*6 &angle-up-left </lp> </f>'
+''
+'<h> Color list </h> <i-tab>'
+'<f> red * Red </f>'
+'<f> yellow * Yellow </f>'
+'<f> green * Green </f>'
+'<f> cyan * Cyan </f>'
+'<f> blue * Blue </f>'
+'<f> magenta * Magenta </f>'
+
+'<f> light-red * </f> '\
+'<f> light-yellow L </f> <x> <f> light-green i </f> <x> <f> light-cyan g </f> <x> <f> light-blue h </f> <x> <f> light-magenta t </f> '\
+'<f> light-red r </f> <x> <f> light-yellow a </f> <x> <f> light-green i </f> <x> <f> light-cyan n </f> <x> '\
+'<f> light-blue b </f> <x> <f> light-magenta o </f> <x> <f> light-red w </f>'
+'</i>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-angle-down-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-down-left </f>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 <h> Boxes </h> </lp> <x> '\
+'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text1 </lp> <x> '\
+'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text2 </lp> <x> '\
+'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text3 </lp> <x> '\
+'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<f> red <lp> &space x/6 </lp> <x> &bold-angle-up-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-up-left </f>'
+''
+'<h> Links </h>'
+''
+'<-> <link> die : Quit </link> (using <\> <link>)'
+'<-> <a> die : <f> hint Quit </f> </a> (using <\> <a>)'
+'<-> <o> id: testlink select: die text: <f> highlight Quit </f> </o> (using <\> <o>)'
+
+)
+
+function previous-test {
+	set-buffer counter
+	redraw
+}
+
+################################################################################
+#                          Final rendering                                     #
+################################################################################
 stty -echo
 hooks[die]='stty echo'
 
+set-buffer counter
 load-default-config
 init-var
-#set-linenum
 redraw
 input-loop
