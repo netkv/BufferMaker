@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.2.1"
+buffermaker_version="0.11.2.2"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -94,6 +94,7 @@ function load-default-config {
 		link-highlight '\e[1;4;96m'
 		title "$(:weight bold)"
 		highlight "$(:weight bold :foreground light-red)"
+		background-highlight "$(:background black)"
 		dim "$(:weight dim)"
 		divider "$(:foreground gray)"
 		name "$(:foreground magenta)"
@@ -143,6 +144,13 @@ function load-default-config {
 		[bold-angle-up-right]='┗'
 		[angle-up-left]='┘'
 		[bold-angle-up-left]='┛'
+		[double-line]='═'
+		[double-column]='║'
+		[double-angle-down-right]='╔'
+		[double-angle-down-left]='╗'
+		[double-angle-up-right]='╚'
+		[double-angle-up-left]='╝'
+		[item]='*'
 	)
 }
 
@@ -700,7 +708,7 @@ function make-render-line {
 	linearray=()
 	bckeIFS="${IFS}"
 	IFS=
-	local -a self_size
+	local -a s
 	case "${bf_d[render-type]}" in
 		'per-char') make-render-line-loop-char;;
 		'per-word') make-render-line-loop;;
@@ -884,7 +892,9 @@ function goto {
 	copy-array "$1" buffer
 	redraw
 }
-
+function syntax-none {
+	set-face "${bf_d[background]:-default}"
+}
 function syntax-format {
 	((skip_word==1)) && {
 		skip_next_space=1
@@ -991,7 +1001,7 @@ function syntax-format {
 		return
 	}
 	
-	[ "$word" = '</h>' ] && {
+	[ "$word" = '</h>' ] || [ "$word" = '</h3>' ] && {
 		unset linearray[-1]
 		bf_e[line]=${bf_e[line]::-1}
 		((column--))
@@ -1003,7 +1013,7 @@ function syntax-format {
 		}
 		return
 	}
-	[ "$word" = '<h>' ] && {
+	[ "$word" = '<h>' ] || [ "$word" = '<h3>' ] && {
 		bckfacename="$facename"
 		skip_next_space=1
 		facename=title
@@ -1209,7 +1219,7 @@ function syntax-format {
 		return
 	}
 	[ "$word" = '<lp>' ] && {
-		self_size+=('')
+		s+=('')
 		pad=3
 		skip_next_space=1
 		return
@@ -1227,14 +1237,12 @@ function syntax-format {
 	((pad==2)) && {
 		expression="$word"
 		pad=1
-		#skip_next_space=1
 		return
 	}
 	[ "$word" = '</lp>' ] && {
 		unset linearray[-1]
 		bf_e[line]=${bf_e[line]::-1}
 		local -i x="${bf_d[size-x]}"
-		local -i s="${self_size[-1]}"
 		padnum=$(($expression))
 		for ((; padnum>0; padnum--)); do
 			face-no-expand "${facename:-${bf_d[background]:-default}}" "$padchar"
@@ -1251,12 +1259,66 @@ function syntax-format {
 		padlist=()
 		return
 	}
+	
+	[ "$word" = '<h1>' ] || [ "$word" = '<h2>' ] || [ "$word" = '<h3>' ] && {
+		s+=('')
+		pad=1
+		skip_next_space=1
+		return
+	}
+	[ "$word" = '</h1>' ] && {
+		for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+			face-no-expand divider "${resources[line]}"
+			bf_e[line]+='s'
+		done						
+		pad=0
+		local wordspace=' '
+		for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+			((pli+2==${#padlist[@]})) && {
+				wordspace=''
+			}	
+			face title "${padlist[pli+1]^^}${wordspace}"
+		done
+		for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+			face-no-expand divider "${resources[line]}"
+			bf_e[line]+='s'
+		done
+		padlist=()
+		return
+	}
+	
+	[ "$word" = '</h2>' ] && {
+		for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+			face-no-expand "${facename:-${bf_d[background]:-default}}" " "
+			bf_e[line]+='s'
+		done						
+		pad=0
+		local wordspace=' '
+		for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+			((pli+2==${#padlist[@]})) && {
+				wordspace=''
+			}	
+			face title "${padlist[pli+1]^^}${wordspace}"
+		done
+		padlist=()
+		return
+	}
+	
 
 	[ "$word" = '<x>' ] && {
 		unset linearray[-1]
 		bf_e[line]=${bf_e[line]::-1}
 		skip_next_space=1
 		return
+	}
+
+	[ "$word" = '<divider>' ] && {
+		for ((x=bf_d[size-x]; x>0; x--)); do
+			face-no-expand "${facename:-divider}" "${resources[line]}"
+			bf_e[line]+='s'
+		done
+		skip_next_space=1
+		return		
 	}
 	
 	((space_next==1)) && {
@@ -1274,6 +1336,36 @@ function syntax-format {
 		skip_next_space=1
 		return
 	}
+	[ "$word" = '<li>' ] && {
+		word="${resources[item]}"
+	}
+
+	## stupid experiment
+	case "$word" in
+		'<h1>'*'</h1>')
+			string="${word:4:-5}"
+			for ((padnum= bf_d[size-x] / 2 - ${#string} / 2; padnum>0; padnum--)); do
+				face-no-expand divider "${resources[line]}"
+				bf_e[line]+='s'
+			done						
+			pad=0
+			local wordspace=' '
+			face title "$string"
+			for ((padnum= bf_d[size-x] / 2 - ${#string} / 2; padnum>0; padnum--)); do
+				face-no-expand divider "${resources[line]}"
+				bf_e[line]+='s'
+			done
+			return
+			;;
+		*'<strong>'*'</strong>'*)
+			string="${word:8:-9}"
+			face title "$string"
+			return
+			;;
+		'</li>'|'<p>'|'</p>'|'<html>'|'</html'|'<body>'|'</body>'|'<script>'|'</script>'|'<head>'|'</head>'|'<ul>'|'</ul>')
+			skip_next_space=1
+			return
+	esac
 
 	[[ "$word" == '&'* ]] && word="${resources[${word:1}]}"
 	((newline==1)) && newline=0
@@ -1285,7 +1377,7 @@ function syntax-format {
 		padlist+=(
 			"${facename:-unknown}" "${ichar}$word"
 		)
-		self_size[-1]=$((self_size[-1] + ${#word} + 1))
+		s[-1]=$((s[-1] + ${#word} + 1))
 		skip_next_space=1
 		return
 	}
@@ -1735,16 +1827,13 @@ function redraw.content {
 		((i - bf_d[base] > max - 2)) && nlchar='' || nlchar='\n'
 
 		((i > ${#buffer[@]})) &&
-			printf '\e[%sG%b%*s%s%b%*s%b'\
+			printf '%b\e[%d;%dH%*s'\
+				   "${faces[${bf_d[background]:-default}]}"\
+				   $((bf_d[loc-y]+i-1))\
 				   "${bf_d[loc-x]}"\
-				   "${faces[line-number-empty]}"\
-				   $((bf_d[number-length]/2)) ''\
-				   "${options[empty-line-char]}"\
-				   "${faces[default]}"\
 				   $((bf_d[size-x] - bf_d[number-length]))\
 				   ''\
-				   "$nlchar" &&
-			continue
+				&& continue
 		
 		# to improve speed syntaxing has to be "lazy" -- having to be heavily cached as ram is far less expensive to waste
 		[ -z "${bf_s[base+i]}" ] && {
@@ -1998,4 +2087,40 @@ function input-loop
 			keypress "${k[@]}" # Handle keypress event
 		}
 	done
-	
+
+
+function about {
+	add-mode about
+		:: '[left]' format-left
+		:: '[up]' format-up
+		:: '[right]' format-right
+		:: '[down]' format-down
+		:: RET link-enter
+		:: C-c die
+		mode-options
+			:: else :
+
+	declare-buffer about
+	bf_d+=(
+		[mode]=about
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+	)
+	buffer=(
+		''
+		'<f> divider <lp> &line x/2-s/2 <h> About Buffermaker </h> </lp> <x> <lp> &line x/2-s[-2]/2 </lp> </f>'
+		''
+		'Buffermaker version: <f> hint <v> buffermaker_version </f>'
+		'Bash version: <f> hint <v> BASH_VERSION </f>'
+		'Terminal: <f> hint <v> TERM </f>'
+		''
+		'<link> die : Quit </link>'
+	)
+	load-default-config
+	init-var
+	redraw
+	input-loop
+}
+
+[[ "${BASH_SOURCE[0]}" = "${0}" ]] && about

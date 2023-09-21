@@ -99,7 +99,7 @@ function number-set {
 	
 buffer=(
 ''
-'<f> divider <lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-self_size[-2]/2 </lp> </f>'
+'<f> divider <lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-s[-2]/2 </lp> </f>'
 ''
 '<-> <f> highlight &bold-line <v> incnum &bold-line </f>'
 ''
@@ -140,40 +140,41 @@ buffer=(
 ''
 '<lp> - 0 '\
 '<o> id: previous select: previous-test text: <f> link Previous </f> </o> </lp> <x> '\
-'<f> divider <lp> &line x/2-s/2-self_size[-2] <h> Formating </h> </lp> <x> '\
-'<lp> &line x/2-self_size[-2]/2-version_lenght+2 </lp> <x> '\
+'<f> divider <lp> &line x/2-s/2-s[-2] <h> Formating </h> </lp> <x> '\
+'<lp> &line x/2-s[-2]/2-version_lenght+2 </lp> <x> '\
 '<f> hint <v> buffermaker_version </f> </f> '
-''
+'<o> id: next select: next-multi text: <f> link Next test </f> </o>'
 "<-> This is a showcase of Buffermaker's integrated formating language."
 ''
 '<-> <\> <lp> (left-pad), <\> <f> (face), <\> <h> (header), <\> <x> (delete-last), <\> (escape) showcase:'
 ''
 '<f> divider &angle-down-right <x> <lp> &line 16*6 </lp> <x> &angle-down-left </f>'
 '<f> divider &column </f> <lp> &space 0 <h> pseudo-Table </h> </lp> <x> '\
-'<lp> &space 16*6-self_size[-2] <f> divider &column </f> </lp>'
+'<lp> &space 16*6-s[-2] <f> divider &column </f> </lp>'
 '<f> divider &column <x> <lp> &space 16*6 &column </lp> </f>'
 '<f> divider &column </f> <f> title '\
 '<lp> &space 0 id </lp> '\
-'<lp> &space 16-self_size[-2] number </lp> '\
-'<lp> &space 16-self_size[-2] amount </lp> '\
-'<lp> &space 16-self_size[-2] cost </lp> '\
-'<lp> &space 16-self_size[-2] date </lp> '\
-'<x> <lp> &space 32-self_size[-2] <f> divider &column </f> </lp> '\
+'<lp> &space 16-s[-2] number </lp> '\
+'<lp> &space 16-s[-2] amount </lp> '\
+'<lp> &space 16-s[-2] cost </lp> '\
+'<lp> &space 16-s[-2] date </lp> '\
+'<x> <lp> &space 32-s[-2] <f> divider &column </f> </lp> '\
 '</f>'
 )
 for i in {0..16}; do
 	buffer+=(
 "<f> divider &column </f> <lp> &space 0 $RANDOM <f> dim random </f> </lp> "\
-"<lp> &space 16-self_size[-2] $RANDOM </lp> "\
-"<lp> &space 16-self_size[-2] ${RANDOM}% </lp> "\
-"<lp> &space 16-self_size[-2] \$$RANDOM </lp> "\
-"<lp> &space 16-self_size[-2] $RANDOM/$RANDOM/$RANDOM </lp> "\
-'<x> <lp> &space 32-self_size[-2] <f> divider &column </f> </lp>'
+"<lp> &space 16-s[-2] $RANDOM </lp> "\
+"<lp> &space 16-s[-2] ${RANDOM}% </lp> "\
+"<lp> &space 16-s[-2] \$$RANDOM </lp> "\
+"<lp> &space 16-s[-2] $RANDOM/$RANDOM/$RANDOM </lp> "\
+'<x> <lp> &space 32-s[-2] <f> divider &column </f> </lp>'
 	)
 done
 buffer+=(
 '<f> divider &angle-up-right <x> <lp> &line 16*6 &angle-up-left </lp> </f>'
 ''
+'<divider>'
 '<h> Color list </h> <i-tab>'
 '<f> red * Red </f>'
 '<f> yellow * Yellow </f>'
@@ -186,23 +187,26 @@ buffer+=(
 '<f> light-yellow L </f> <x> <f> light-green i </f> <x> <f> light-cyan g </f> <x> <f> light-blue h </f> <x> <f> light-magenta t </f> '\
 '<f> light-red r </f> <x> <f> light-yellow a </f> <x> <f> light-green i </f> <x> <f> light-cyan n </f> <x> '\
 '<f> light-blue b </f> <x> <f> light-magenta o </f> <x> <f> light-red w </f>'
-'</i>'
+'</i> <x> <divider>'
+''
 '<f> red <lp> &space x/6 </lp> <x> &bold-angle-down-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-down-left </f>'
 '<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 <h> Boxes </h> </lp> <x> '\
-'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
 '<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text1 </lp> <x> '\
-'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
 '<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text2 </lp> <x> '\
-'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
 '<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text3 </lp> <x> '\
-'<lp> &space x/3*2-self_size[-2] <f> red &bold-column </lp> </f>'
+'<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
 '<f> red <lp> &space x/6 </lp> <x> &bold-angle-up-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-up-left </f>'
 ''
+'<divider>'
 '<h> Links </h>'
 ''
 '<-> <link> die : Quit </link> (using <\> <link>)'
 '<-> <a> die : <f> hint Quit </f> </a> (using <\> <a>)'
 '<-> <o> id: testlink select: die text: <f> highlight Quit </f> </o> (using <\> <o>)'
+'<f> divider <divider> </f>'
 
 )
 
@@ -210,6 +214,69 @@ function previous-test {
 	set-buffer counter
 	redraw
 }
+################################################################################
+#                          Multi buffer example                                #
+################################################################################
+function next-multi {
+	set-buffer mbackground
+	redraw
+	set-buffer mlist_title
+	redraw
+	set-buffer mlist
+	redraw
+}
+declare-buffer mbackground
+bf_d+=(
+	[line]=1
+	[column]=0
+	[mode]=testui
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+buffer=(
+''
+'<f> hint <lp> &space x/2-s/2 Multi buffer test </lp> </f>'
+)
+declare-buffer mlist_title
+bf_d+=(
+	[loc-y]=4
+	[loc-x]=4
+	[size-x]=$((COLUMNS/2-8))
+	[size-y]=$((LINES/2-8))
+	[line]=1
+	[column]=0
+	[mode]=testui
+	[background]=background-highlight
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+buffer=(
+''
+'<f> <v> bf_d[background] <lp> &space x/2-s/2 Multi buffer test </lp> </f>'
+)
+declare-buffer mlist
+bf_d+=(
+	[loc-y]=5
+	[loc-x]=4
+	[size-x]=$((COLUMNS/2-8))
+	[size-y]=$((LINES/2-9))
+	[line]=1
+	[column]=0
+	[mode]=testui
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+buffer=(
+	''
+	''
+	'item1'
+	'item2'
+	'item3'
+)
+
 
 ################################################################################
 #                          Final rendering                                     #
@@ -221,4 +288,5 @@ set-buffer counter
 load-default-config
 init-var
 redraw
+obj next
 input-loop
