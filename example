@@ -114,7 +114,7 @@ buffer=(
 'text: <f> title ... </f> '\
 '</o>'
 # quit button
-'<o> id: quit select: die right: obj next left: : down: : up: obj inc text: <f> red Quit </f> </o> '\
+'<o> id: quit select: switch-buffer main right: obj next left: : down: : up: obj inc text: <f> red Quit </f> </o> '\
 '<o> id: next select: next-test right: : left: obj quit down: : up: obj dec text: <f> link Next </f> </o>'
 )
 
@@ -131,7 +131,6 @@ bf_d+=(
 	[line]=1
 	[column]=0
 	[mode]=testui
-	[filetype]='format'
 	[syntax]=syntax-format
 	[syntax-exec]=1
 	[render-type]=per-char
@@ -310,10 +309,35 @@ buffer=(
 ################################################################################
 #                          Final rendering                                     #
 ################################################################################
+declare-buffer main
+bf_d+=(
+	[line]=4
+	[column]=6
+	[mode]=testui
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+mapfile -t -O 1 buffer <<'EOF'
+<h1> Buffermaker </h1>
+<subh1> Program example && reference </subh1>
+<h> Demos </h>
+<-> <li> <link> switch-buffer counter : Test program </link>
+<-> <li> <link> switch-buffer formats : Format </link>
+<-> <li> <link> next-multi : Multi buffer </link>
+
+<h> More Ebashs programs </h>
+<-> <li> <link> xdg-open https://github.com/aeknt/bffm : Bffm </link>
+<-> <li> <link> xdg-open https://github.com/aeknt/ebashs : Ebashs </link> (will probably be outdated)
+
+<h> More </h>
+<-> <li> <link> buffermaker : About BufferMaker </link> 
+EOF
+
 stty -echo
 hooks[die]='stty echo'
 
-set-buffer formats
+set-buffer main
 load-default-config
 init-var
 redraw

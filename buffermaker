@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.3"
+buffermaker_version="0.11.3.1"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -191,29 +191,6 @@ esac
 ## focus set magic # function
 function focus {
 	_last_add="$1"
-}
-
-## declare-new-buffer Create new text buffer
-function declare-new-buffer {
-	_last_add='set-buffer'
-	((current_count++))
-	set-buffer "bf_${current_count}"
-	buffers_l+=("$current_buffer")
-	last_line=1
-	declare -Ag "${current_buffer}_bf_t"
-	declare -Ag "${current_buffer}_bf_h"
-	declare -Ag "${current_buffer}_bf_d"
-	bf_d=(
-		# some sane default values
-		[line]=0
-		[base]=1
-		[column]=0
-		[modified]=0
-		[loc-x]=1
-		[loc-y]=1
-		[size-x]=$COLUMNS
-		[size-y]=$LINES
-	)
 }
 
 function declare-buffer {
@@ -875,6 +852,10 @@ function set-buffer {
 	declare -ng bf_h="${current_buffer}_bf_h" # hooks
 	declare -ng bf_t="${current_buffer}_bf_t" # tmp cache
 }
+function switch-buffer {
+	set-buffer "$1"
+	redraw
+}
 
 ## add-to-list
 # Adds a buffer into currently active buffer list
@@ -1367,12 +1348,29 @@ function syntax-format {
 		return
 	}
 	
-	[ "$word" = '<h1>' ] || [ "$word" = '<h2>' ] || [ "$word" = '<h3>' ] && {
+	[ "$word" = '<h1>' ] || [ "$word" = '<h2>' ] || [ "$word" = '<subh1>' ] && {
 		s+=('')
 		pad=1
 		skip_next_space=1
 		return
 	}
+	[ "$word" = '</subh1>' ] && {
+		for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+			face-no-expand "${facename:-${bf_d[background]:-default}}" " "
+			bf_e[line]+='s'
+		done						
+		pad=0
+		local wordspace=' '
+		for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+			((pli+2==${#padlist[@]})) && {
+				wordspace=''
+			}	
+			face "${facename:-unknown}" "${padlist[pli+1]}${wordspace}"
+		done
+		padlist=()
+		return
+	}
+	
 	[ "$word" = '</h1>' ] && {
 		for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
 			face-no-expand divider "${resources[line]}"
