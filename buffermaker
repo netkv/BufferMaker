@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.2.2"
+buffermaker_version="0.11.3"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -32,7 +32,6 @@ function load-default-config {
 		[todonote]=0
 		[line-number-mode]=0
 		[empty-line-char]=''
-		[tabchar]='    '
 		[keep-message]=0
 		[tty-linuxfb]=1 # enable truecolor support for framebuffer
 		[full-redraw]=0 # redraws whole buffer, can fix artifacting in linuxfb at cost of performance
@@ -78,6 +77,9 @@ function load-default-config {
 	#			:slant
 	#				normal
 	#				italic
+	#           :underline
+	#               t (enables)
+	#               nil (do nothing)
 	#			:background & :foreground
 	#				either hex. colour, colour name, or c<index> for 256 indexed colours
 	#		See extensions/gruvboxdark for another example
@@ -85,21 +87,25 @@ function load-default-config {
 		reset '\e[m'
 		default "$(:weight normal)"
 		menu "$(:background yellow :foreground black)"
-		menu-divider '\e[4m'
-		menu-highlight '\e[4m\e[1m'
+		menu-divider "$(:underline t)"
+		menu-highlight "$(:weight bold :underline t)"
 		menu-enabled "$(:background yellow :foreground black)"
 		menu-selected "$(:background light-yellow :foreground black :weight bold)"
-		button "$(:foreground light-cyan)"
-		link '\e[4;96m'
-		link-highlight '\e[1;4;96m'
+		checkbox-disabled "$(:foreground light-gray)"
+		checkbox-enabled "$(:foreground yellow :weight bold)"
+		action "$(:foreground light-blue)"
+		button "$(:background yellow :foreground black)"
+		link "$(:underline t :foreground light-blue)"
+		link-highlight "$(:weight bold :underline t :foreground light-blue)"
 		title "$(:weight bold)"
-		highlight "$(:weight bold :foreground light-red)"
+		alt "$(:slant italic)"
+		highlight "\e[4m$(:weight bold)"
 		background-highlight "$(:background black)"
 		dim "$(:weight dim)"
 		divider "$(:foreground gray)"
 		name "$(:foreground magenta)"
 		hint "$(:foreground light-yellow)"
-		hint-highlight '\e[4;93m'
+		hint-highlight "$(:underline t :foreground light-yellow)"
 		line-number "$(:foreground gray)"
 		line-number-empty "$(:weight dim :foreground gray)"
 		line-number-current-line "$(:weight bold :foreground light-red)"
@@ -151,6 +157,10 @@ function load-default-config {
 		[double-angle-up-right]='╚'
 		[double-angle-up-left]='╝'
 		[item]='*'
+		[item-number]='.'
+		[tab]='    '
+		[checkbox-disabled]='[ ]'
+		[checkbox-enabled]='[x]'
 	)
 }
 
@@ -190,6 +200,7 @@ function declare-new-buffer {
 	set-buffer "bf_${current_count}"
 	buffers_l+=("$current_buffer")
 	last_line=1
+	declare -Ag "${current_buffer}_bf_t"
 	declare -Ag "${current_buffer}_bf_h"
 	declare -Ag "${current_buffer}_bf_d"
 	bf_d=(
@@ -210,6 +221,7 @@ function declare-buffer {
 	set-buffer "${1}" # name
 	buffers_l+=("$current_buffer")
 	last_line=1
+	declare -Ag "${current_buffer}_bf_t"
 	declare -Ag "${current_buffer}_bf_h"
 	declare -Ag "${current_buffer}_bf_d"
 	bf_d=(
@@ -407,6 +419,14 @@ function :slant {
 	case "$1" in
 		italic) printf '\\e[3m';;
 		normal) printf '\\e[m'
+	esac
+	shift
+	[ -n "$1" ] && "$@";
+}
+function :underline {
+	case "$1" in
+		t) printf '\\e[4m';;
+		nil) printf '\\e[m'
 	esac
 	shift
 	[ -n "$1" ] && "$@";
@@ -688,6 +708,8 @@ function make-render-area {
 		bf_s[syntaxline]="${current_buffer}_syntax${syntaxline}"
 		((syntaxline++))
 		line="$l"
+		local -a s
+		
 		case "${bf_d[render-type]}" in
 			'per-char') make-render-line-loop-char;;
 			'per-word') make-render-line-loop;;
@@ -709,6 +731,7 @@ function make-render-line {
 	bckeIFS="${IFS}"
 	IFS=
 	local -a s
+	
 	case "${bf_d[render-type]}" in
 		'per-char') make-render-line-loop-char;;
 		'per-word') make-render-line-loop;;
@@ -720,6 +743,7 @@ function make-render-line {
 function make-render-line-loop {
 	local -i comment=0
 	local -i skip_next_space=0
+	
 	local word=''
 	bf_e[line]=''
 
@@ -755,6 +779,7 @@ function make-render-line-loop-char {
 	unset bf_c[line]
 		
 	column=0
+	
 	while read -rsn1 char; do	
 		case "$char" in
 			' ')
@@ -768,11 +793,11 @@ function make-render-line-loop-char {
 				syntax-word
 				word=''
 				local -i i
-				for ((i = ${#options[tabchar]}; i > 0 ; i--)); do
+				for ((i = ${#resources[tab]}; i > 0 ; i--)); do
 					bf_e[line]+="${charmap[	]}"
 				done
-				face-no-expand tab-face "${options[tabchar]}"
-				((column+=${#options[tabchar]}));;
+				face-no-expand tab-face "${resources[tab]}"
+				((column+=${#resources[tab]}));;
 			'')
 				syntax-word
 				word=''
@@ -842,12 +867,13 @@ function size-full {
 # Switch to buffer \$1 
 function set-buffer {
 	current_buffer="$1"
-	declare -ng buffer="${current_buffer}_buffer"
-	declare -ng bf_s="${current_buffer}_bf_s"
-	declare -ng bf_e="${current_buffer}_bf_e"
-	declare -ng bf_d="${current_buffer}_bf_d"
-	declare -ng bf_c="${current_buffer}_bf_c"
-	declare -ng bf_h="${current_buffer}_bf_h"
+	declare -ng buffer="${current_buffer}_buffer" # source
+	declare -ng bf_s="${current_buffer}_bf_s" # syntax
+	declare -ng bf_e="${current_buffer}_bf_e" # charmap
+	declare -ng bf_d="${current_buffer}_bf_d" # data
+	declare -ng bf_c="${current_buffer}_bf_c" # commands/objects
+	declare -ng bf_h="${current_buffer}_bf_h" # hooks
+	declare -ng bf_t="${current_buffer}_bf_t" # tmp cache
 }
 
 ## add-to-list
@@ -907,10 +933,12 @@ function syntax-format {
 		return
 	}
 	((newline==1)) && {
-		ichar="${indent_spaces}"
+		bf_t[ichar]="${bf_t[indent_spaces]}"
+		bf_t[iexp]="${bf_t[indent_spaces_e]}"
 	}
 	((newline==0)) && {
-		ichar=
+		bf_t[ichar]=
+		bf_t[iexp]=
 	}
 
 	((escape==2)) && {
@@ -921,7 +949,7 @@ function syntax-format {
 	}
 	((escape==1)) && {
 		escape=0
-		face "$facename" "${ichar}$word"
+		face "$facename" "${bf_t[ichar]}$word"
 		return
 	}
 	[ "$word" = '<\>' ] && {
@@ -1020,6 +1048,37 @@ function syntax-format {
 		upper=1
 		return
 	}
+
+	[ "$word" = '</b>' ] || [ "$word" = '</strong>' ] || [ "$word" = '</i>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		((column--))
+		unset facename
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	[ "$word" = '<b>' ] && {
+		bckfacename="$facename"
+		skip_next_space=1
+		facename=title
+		return
+	}
+	[ "$word" = '<i>' ] && {
+		bckfacename="$facename"
+		skip_next_space=1
+		facename=alt
+		return
+	}
+	
+	[ "$word" = '<strong>' ] && {
+		bckfacename="$facename"
+		skip_next_space=1
+		facename=highlight
+		return
+	}
 	
 	((sethighlight==2)) && {
 		sethighlight=1
@@ -1041,41 +1100,41 @@ function syntax-format {
 	}
 	[ "$word" = '<tab>' ] || [ "$word" = '<->' ] && {
 		skip_next_space=1
-		for ((if=0; if< format_tab; if++)) {
-			linearray+=(' ')
-			bf_e[line]+='s'
+		face-no-expand tab-face "${resources[tab]}"
+		for ((if=0; if< ${#resources[tab]}; if++)) {
+			bf_e[line]+='t'
 			((column++))
 		}
 		return
 	}
-	[ "$word" = '</i>' ] && {
-		indent_spaces=
+	[ "$word" = '</indent>' ] && {
+		bf_t[indent_spaces]=
+		bf_t[indent_spaces_e]=
 		return
 	}
-	((indent==1)) && {
-		indent=0
+	((bf_t[indent]==1)) && {
+		bf_t[indent]=0
 		skip_next_space=1
-		indent_spaces=
-		indent_spaces_e=
+		bf_t[indent_spaces]=
+		bf_t[indent_spaces_e]=
+		bf_t[indent_spaces_f]=tab
+		case "$word" in
+			'&tab')
+				bf_t[indent_spaces]="${resources[tab]}"
+				for ((if=0; if< ${#resources[tab]}; if++)) {
+					bf_t[indent_spaces_e]+='t'
+				}
+				return
+		esac
 		for ((if=0; if< word; if++)) {
-			indent_spaces+=' '
-			indent_spaces_e+='s'
+			bf_t[indent_spaces]+=' '
+			bf_t[indent_spaces_e]+='s'
 		}
 		return
 	}
-	[ "$word" = '<i>' ] && {
-		indent=1
+	[ "$word" = '<indent>' ] && {
+		bf_t[indent]=1
 		skip_next_space=1
-		return
-	}
-	[ "$word" = '<i-tab>' ] && {
-		skip_next_space=1
-		indent_spaces=
-		indent_spaces_e=
-		for ((if=0; if< format_tab; if++)) {
-			indent_spaces+=' '
-			indent_spaces_e+='s'
-		}
 		return
 	}
 	((link==2)) && {
@@ -1218,6 +1277,54 @@ function syntax-format {
 		set_obj=0
 		return
 	}
+	((bf_t[checkbox]==1)) && {
+		bf_t[checkbox]=0
+		local -n state="$word"
+		[ -z "$state" ] && {
+			state=0
+		}
+		local display=
+		bckfacename="$facename"
+		case "$state" in
+			'1')
+				facename=checkbox-enabled
+				display="${resources[checkbox-enabled]}";;
+			*)
+				facename=checkbox-disabled
+				display="${resources[checkbox-disabled]}"
+		esac
+		((lc++))
+		((column--))
+		bf_c[line]+="bf_c_${lc}_${current_buffer} "
+		declare -Ag "bf_c_${lc}_${current_buffer}"
+		local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+		bf_c_line=(
+			[start]=$((column))
+			[end]=$((column + ${#display}))
+			[exec]="toggle-checkbox $line $word"
+		)
+		word="${display}"
+	}
+	[ "$word" = '<ch>' ] && {
+		((
+			bf_t[checkbox]=1,
+			skip_next_space=1
+		))
+		return
+	}
+	[ "$word" = '</ch>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		((column--))
+		unset facename
+		upper=0
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	
 	[ "$word" = '<lp>' ] && {
 		s+=('')
 		pad=3
@@ -1305,14 +1412,14 @@ function syntax-format {
 	}
 	
 
-	[ "$word" = '<x>' ] && {
+	[ "$word" = '<>' ] && {
 		unset linearray[-1]
 		bf_e[line]=${bf_e[line]::-1}
 		skip_next_space=1
 		return
 	}
 
-	[ "$word" = '<divider>' ] && {
+	[ "$word" = '<hr>' ] && {
 		for ((x=bf_d[size-x]; x>0; x--)); do
 			face-no-expand "${facename:-divider}" "${resources[line]}"
 			bf_e[line]+='s'
@@ -1336,52 +1443,44 @@ function syntax-format {
 		skip_next_space=1
 		return
 	}
-	[ "$word" = '<li>' ] && {
-		word="${resources[item]}"
+	
+	[ "$word" = '<ol>' ] && {
+		listcount=1
+		orderlist=1
+		skip_next_space=1
+		return
 	}
-
-	## stupid experiment
-	case "$word" in
-		'<h1>'*'</h1>')
-			string="${word:4:-5}"
-			for ((padnum= bf_d[size-x] / 2 - ${#string} / 2; padnum>0; padnum--)); do
-				face-no-expand divider "${resources[line]}"
-				bf_e[line]+='s'
-			done						
-			pad=0
-			local wordspace=' '
-			face title "$string"
-			for ((padnum= bf_d[size-x] / 2 - ${#string} / 2; padnum>0; padnum--)); do
-				face-no-expand divider "${resources[line]}"
-				bf_e[line]+='s'
-			done
-			return
-			;;
-		*'<strong>'*'</strong>'*)
-			string="${word:8:-9}"
-			face title "$string"
-			return
-			;;
-		'</li>'|'<p>'|'</p>'|'<html>'|'</html'|'<body>'|'</body>'|'<script>'|'</script>'|'<head>'|'</head>'|'<ul>'|'</ul>')
-			skip_next_space=1
-			return
-	esac
-
+	[ "$word" = '</ol>' ] && {
+		listcount=0
+		orderlist=0
+		skip_next_space=1
+		return
+	}
+	
+	[ "$word" = '<li>' ] && {
+		((orderlist==1)) && {
+			word="${listcount}${resources[item-number]}"
+			((listcount++))
+		} || word="${resources[item]}"
+	}
+	
 	[[ "$word" == '&'* ]] && word="${resources[${word:1}]}"
 	((newline==1)) && newline=0
-	((column+=${#ichar} + ${#word}))
+	((column+=${#bf_t[ichar]} + ${#word}))
 	((upper==1)) && {
 		word="${word^^}"
 	}
 	((pad==1)) && {
 		padlist+=(
-			"${facename:-unknown}" "${ichar}$word"
+			"${facename:-unknown}" "${bf_t[ichar]}$word"
 		)
 		s[-1]=$((s[-1] + ${#word} + 1))
 		skip_next_space=1
 		return
 	}
-	face "${facename:-unknown}" "${ichar}$word"
+	face-no-expand "${bf_t[indent_spaces_f]:-tab}" "${bf_t[ichar]}"
+	bf_e[line]+="${bf_t[iexp]}"
+	face "${facename:-unknown}" "$word"
 }
 
 function link-enter {
@@ -1452,6 +1551,16 @@ function obj {
 			}
 		}
 	}
+}
+
+function toggle-checkbox {
+	local -n var="$2"
+	case "$var" in
+		0) var=1;;
+		*) var=0
+	esac
+	make-render-line "$1"
+	redraw
 }
 	
 fn is-function 'declare -F -- "$1" > /dev/null'
@@ -1548,7 +1657,7 @@ fn move-end-of-line 'bf_d[column]="${#bf_e[${bf_d[line]}]}"; redraw'
 function forward-char {
 	for ((i = 0; i < ${1:-1}; i++)); do
 		case "${bf_e[${bf_d[line]}]:${bf_d[column]}+1:1}" in
-			't') bf_d[column]=$(( bf_d[column]+${#options[tabchar]}));;
+			't') bf_d[column]=$(( bf_d[column]+${#resources[tab]}));;
 			*) ((bf_d[column]++));;
 		esac
 		((bf_d[column] > ${#bf_e[${bf_d[line]}]})) && {
@@ -1568,7 +1677,7 @@ function forward-char {
 function backward-char {
 	for ((i = 0; i < ${1:-1}; i++)); do
 		case "${bf_e[${bf_d[line]}]:${bf_d[column]}-1:1}" in
-			't') bf_d[column]=$(( bf_d[column]-${#options[tabchar]}));;
+			't') bf_d[column]=$(( bf_d[column]-${#resources[tab]}));;
 			*) ((bf_d[column]--));;
 		esac
 		((bf_d[column] < 0)) && ((bf_d[line]==1)) && {
@@ -2109,7 +2218,7 @@ function about {
 	)
 	buffer=(
 		''
-		'<f> divider <lp> &line x/2-s/2 <h> About Buffermaker </h> </lp> <x> <lp> &line x/2-s[-2]/2 </lp> </f>'
+		'<h1> About Buffermaker </h1>'
 		''
 		'Buffermaker version: <f> hint <v> buffermaker_version </f>'
 		'Bash version: <f> hint <v> BASH_VERSION </f>'

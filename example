@@ -99,7 +99,7 @@ function number-set {
 	
 buffer=(
 ''
-'<f> divider <lp> &line x/2-s/2 <h> Super number counter </h> </lp> <x> <lp> &line x/2-s[-2]/2 </lp> </f>'
+'<f> divider <lp> &line x/2-s/2 <h> Super number counter </h> </lp> <> <lp> &line x/2-s[-2]/2 </lp> </f>'
 ''
 '<-> <f> highlight &bold-line <v> incnum &bold-line </f>'
 ''
@@ -139,26 +139,26 @@ bf_d+=(
 buffer=(
 ''
 '<lp> - 0 '\
-'<o> id: previous select: previous-test text: <f> link Previous </f> </o> </lp> <x> '\
-'<f> divider <lp> &line x/2-s/2-s[-2] <h> Formating </h> </lp> <x> '\
-'<lp> &line x/2-s[-2]/2-version_lenght+2 </lp> <x> '\
+'<o> id: previous select: previous-test text: <f> link Previous </f> </o> </lp> <> '\
+'<f> divider <lp> &line x/2-s/2-s[-2] <h> Formating </h> </lp> <> '\
+'<lp> &line x/2-s[-2]/2-version_lenght+2 </lp> <> '\
 '<f> hint <v> buffermaker_version </f> </f> '
 '<o> id: next select: next-multi text: <f> link Next test </f> </o>'
 "<-> This is a showcase of Buffermaker's integrated formating language."
 ''
-'<-> <\> <lp> (left-pad), <\> <f> (face), <\> <h> (header), <\> <x> (delete-last), <\> (escape) showcase:'
+'<-> <\> <lp> (left-pad), <\> <f> (face), <\> <h> (header), <\> <> (delete-last), <\> (escape) showcase:'
 ''
-'<f> divider &angle-down-right <x> <lp> &line 16*6 </lp> <x> &angle-down-left </f>'
-'<f> divider &column </f> <lp> &space 0 <h> pseudo-Table </h> </lp> <x> '\
+'<f> divider &angle-down-right <> <lp> &line 16*6 </lp> <> &angle-down-left </f>'
+'<f> divider &column </f> <lp> &space 0 <h> pseudo-Table </h> </lp> <> '\
 '<lp> &space 16*6-s[-2] <f> divider &column </f> </lp>'
-'<f> divider &column <x> <lp> &space 16*6 &column </lp> </f>'
+'<f> divider &column <> <lp> &space 16*6 &column </lp> </f>'
 '<f> divider &column </f> <f> title '\
 '<lp> &space 0 id </lp> '\
 '<lp> &space 16-s[-2] number </lp> '\
 '<lp> &space 16-s[-2] amount </lp> '\
 '<lp> &space 16-s[-2] cost </lp> '\
 '<lp> &space 16-s[-2] date </lp> '\
-'<x> <lp> &space 32-s[-2] <f> divider &column </f> </lp> '\
+'<> <lp> &space 32-s[-2] <f> divider &column </f> </lp> '\
 '</f>'
 )
 for i in {0..16}; do
@@ -168,45 +168,74 @@ for i in {0..16}; do
 "<lp> &space 16-s[-2] ${RANDOM}% </lp> "\
 "<lp> &space 16-s[-2] \$$RANDOM </lp> "\
 "<lp> &space 16-s[-2] $RANDOM/$RANDOM/$RANDOM </lp> "\
-'<x> <lp> &space 32-s[-2] <f> divider &column </f> </lp>'
+'<> <lp> &space 32-s[-2] <f> divider &column </f> </lp>'
 	)
 done
 buffer+=(
-'<f> divider &angle-up-right <x> <lp> &line 16*6 &angle-up-left </lp> </f>'
+'<f> divider &angle-up-right <> <lp> &line 16*6 &angle-up-left </lp> </f>'
 ''
-'<divider>'
-'<h> Color list </h> <i-tab>'
-'<f> red * Red </f>'
-'<f> yellow * Yellow </f>'
-'<f> green * Green </f>'
-'<f> cyan * Cyan </f>'
-'<f> blue * Blue </f>'
-'<f> magenta * Magenta </f>'
+'<hr>'
+'<h> Unordered list </h> <indent> &tab'
+'<f> red <li> Red </f>'
+'<f> yellow <li> Yellow </f>'
+'<f> green <li> Green </f>'
+'<f> cyan <li> Cyan </f>'
+'<f> blue <li> Blue </f>'
+'<f> magenta <li> Magenta </f>'
 
-'<f> light-red * </f> '\
-'<f> light-yellow L </f> <x> <f> light-green i </f> <x> <f> light-cyan g </f> <x> <f> light-blue h </f> <x> <f> light-magenta t </f> '\
-'<f> light-red r </f> <x> <f> light-yellow a </f> <x> <f> light-green i </f> <x> <f> light-cyan n </f> <x> '\
-'<f> light-blue b </f> <x> <f> light-magenta o </f> <x> <f> light-red w </f>'
-'</i> <x> <divider>'
+'<f> light-red <li> </f> '\
+'<f> light-yellow L </f> <> <f> light-green i </f> <> <f> light-cyan g </f> <> <f> light-blue h </f> <> <f> light-magenta t </f> '\
+'<f> light-red r </f> <> <f> light-yellow a </f> <> <f> light-green i </f> <> <f> light-cyan n </f> <> '\
+'<f> light-blue b </f> <> <f> light-magenta o </f> <> <f> light-red w </f>'
+'</indent>'
 ''
-'<f> red <lp> &space x/6 </lp> <x> &bold-angle-down-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-down-left </f>'
-'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 <h> Boxes </h> </lp> <x> '\
+'<h> Ordered list </h> <indent> &tab <ol>'
+'<li> Potatoes'
+'<li> Beef'
+'<li> Pork'
+'<li> Vodka'
+'<li> Salad'
+'<li> Milk'
+'<li> Ice cream'
+'</ol> </indent> <> <hr>'
+'<f> red <lp> &space x/6 </lp> <> &bold-angle-down-right <> <lp> &bold-line x/3*2 </lp> <> &bold-angle-down-left </f>'
+'<f> red <lp> &space x/6 </lp> <> &bold-column </f> <lp> &space 0 <h> Boxes </h> </lp> <> '\
 '<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
-'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text1 </lp> <x> '\
+'<f> red <lp> &space x/6 </lp> <> &bold-column </f> <lp> &space 0 * Text1 </lp> <> '\
 '<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
-'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text2 </lp> <x> '\
+'<f> red <lp> &space x/6 </lp> <> &bold-column </f> <lp> &space 0 * Text2 </lp> <> '\
 '<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
-'<f> red <lp> &space x/6 </lp> <x> &bold-column </f> <lp> &space 0 * Text3 </lp> <x> '\
+'<f> red <lp> &space x/6 </lp> <> &bold-column </f> <lp> &space 0 * Text3 </lp> <> '\
 '<lp> &space x/3*2-s[-2] <f> red &bold-column </lp> </f>'
-'<f> red <lp> &space x/6 </lp> <x> &bold-angle-up-right <x> <lp> &bold-line x/3*2 </lp> <x> &bold-angle-up-left </f>'
+'<f> red <lp> &space x/6 </lp> <> &bold-angle-up-right <> <lp> &bold-line x/3*2 </lp> <> &bold-angle-up-left </f>'
 ''
-'<divider>'
+'<hr>'
 '<h> Links </h>'
 ''
-'<-> <link> die : Quit </link> (using <\> <link>)'
-'<-> <a> die : <f> hint Quit </f> </a> (using <\> <a>)'
-'<-> <o> id: testlink select: die text: <f> highlight Quit </f> </o> (using <\> <o>)'
-'<f> divider <divider> </f>'
+'<tab> <link> die : Quit </link> (using <\> <link>)'
+'<tab> <a> die : <f> hint Quit </f> </a> (using <\> <a>)'
+'<tab> <o> id: testlink select: die text: <f> highlight Quit </f> </o> (using <\> <o>)'
+'<f> divider <hr> </f>'
+'<h> Basic format </h>'
+'<indent> &tab'
+'<b> bold </b>'
+'<strong> strong </strong>'
+'<i> italic </strong> </indent>'
+''
+'<hr>'
+'<h> Checkboxes </h>'
+''
+'<-> <ch> test0 </ch> name0 (variable: <v> test0 <> )'
+'<-> <ch> test1 </ch> name1 (variable: <v> test1 <> )'
+'<-> <ch> test2 </ch> name2 (variable: <v> test2 <> )'
+'<-> <ch> test3 </ch> name3 (variable: <v> test3 <> )'
+'<-> <ch> test4 </ch> name4 (variable: <v> test4 <> )'
+'<-> <ch> test5 </ch> name5 (variable: <v> test5 <> )'
+'<-> <ch> test6 </ch> name6 (variable: <v> test6 <> )'
+'<-> <ch> test7 </ch> name7 (variable: <v> test7 <> )'
+'<-> <ch> test8 </ch> name8 (variable: <v> test8 <> )'
+'<-> <ch> test9 </ch> name9 (variable: <v> test9 <> )'
+''
 
 )
 
@@ -284,7 +313,7 @@ buffer=(
 stty -echo
 hooks[die]='stty echo'
 
-set-buffer counter
+set-buffer formats
 load-default-config
 init-var
 redraw
