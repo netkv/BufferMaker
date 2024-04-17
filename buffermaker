@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.3.1"
+buffermaker_version="0.11.4"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -12,8 +12,8 @@ declare -A highlight faces faces_raw options charmap hooks resources
 declare -A keys_global
 declare -a k_hex buffers_l modes=('keys_global')
 declare -n buffer bf_s bf_e bf_d
-declare -i hidden ismenu comment current_count
-declare message reset readin
+declare -i ismenu comment current_count
+declare reset readin
 
 function load-default-config {
 	## Configuration
@@ -32,7 +32,6 @@ function load-default-config {
 		[todonote]=0
 		[line-number-mode]=0
 		[empty-line-char]=''
-		[keep-message]=0
 		[tty-linuxfb]=1 # enable truecolor support for framebuffer
 		[full-redraw]=0 # redraws whole buffer, can fix artifacting in linuxfb at cost of performance
 		[esc-to-meta]=0
@@ -617,6 +616,7 @@ function load-theme {
 		}
 	}
 	((t)) && errno=1 die
+			 
 }
 
 ## rest of this garbageware
@@ -627,8 +627,6 @@ function load-theme {
 function refresh {
 	clear-screen
 	bf_s=''
-	
-	message="reloaded..."
 	redraw
 }
 
@@ -649,7 +647,9 @@ function mode-back {
 ## read-command
 # Works like normal "'read'" but for bottom commanline
 function read-command {
-	printf '\e[%s;0H' $((bf_d[size-y] + bf_d[loc-y]))
+	local -i loc
+	[ -n "$4" ] && loc="$4" || loc=$((bf_d[size-y] + bf_d[loc-y])) 
+	printf '\e[%s;0H' "$loc"
 	printf '\e[?25h'
 	read -re -p "$1" -i "$3" "$2" || return 1
 }
@@ -881,8 +881,8 @@ function clear-buffer {
 ## list-directory
 # Basically like ls command 
 function list-directory {
-	((hidden==1)) && shopt -s dotglob
-	((hidden==0)) && shopt -u dotglob
+	((options[display-dotfiles]==1)) && shopt -s dotglob
+	((options[display-dotfiles]==0)) && shopt -u dotglob
 	printf '..\n'
 	printf '%s\n' *
 }
@@ -902,6 +902,7 @@ function goto {
 function syntax-none {
 	set-face "${bf_d[background]:-default}"
 }
+
 function syntax-format {
 	((skip_word==1)) && {
 		skip_next_space=1
@@ -1560,7 +1561,7 @@ function toggle-checkbox {
 	make-render-line "$1"
 	redraw
 }
-	
+
 fn is-function 'declare -F -- "$1" > /dev/null'
 
 ## Dumps current buffer into a file	
@@ -1888,6 +1889,11 @@ function set-linenum {
 	bf_h[redraw.content begin]=linenum.begin
 	bf_h[redraw.content loop-begin]=linenum.loop-begin
 	bf_h[redraw.cursor pre-redraw]=linenum.update
+}
+function unset-linenum {
+	bf_h[redraw.content begin]=''
+	bf_h[redraw.content loop-begin]=''
+	bf_h[redraw.cursor pre-redraw]=''
 }
 
 function redraw.content {
