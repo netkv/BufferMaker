@@ -93,7 +93,7 @@ function load-default-config {
 		checkbox-disabled "$(:foreground light-gray)"
 		checkbox-enabled "$(:foreground yellow :weight bold)"
 		action "$(:foreground light-blue)"
-		button "$(:background yellow :foreground black)"
+		button "$(:mode inverse :underline t)"
 		link "$(:underline t :foreground light-blue)"
 		link-highlight "$(:weight bold :underline t :foreground light-blue)"
 		title "$(:weight bold)"
@@ -2228,11 +2228,29 @@ function about {
 		'Bash version: <f> hint <v> BASH_VERSION </f>'
 		'Terminal: <f> hint <v> TERM </f>'
 		''
-		'<link> die : Quit </link>'
+		'<hr>'
+		''
+		'Aeknt 2022-2024'
+		'Repo: https://github.com/aeknt/BufferMaker' 
+		'(Based on Bed https://github.com/comfies/bed Comfies 2020)'
+		''
+		'<h3> Licence </h3> <f> yellow (BSD-0) </f>'
+		'Permission to use, copy, modify, and/or distribute this software for any purpose'
+		'with or without fee is hereby granted.'
+		''
+		'THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD'
+		'TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.'
+		'IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT,'
+		'OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA'
+		'OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,'
+		'ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.'
+		''
+		'<o> id: quit select: die text: <f> button quit </f>'
 	)
 	load-default-config
 	init-var
 	redraw
+	obj quit
 	input-loop
 }
 
