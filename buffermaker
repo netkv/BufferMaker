@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.4"
+buffermaker_version="0.11.4.1"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -2245,7 +2245,7 @@ function about {
 		'OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,'
 		'ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.'
 		''
-		'<o> id: quit select: die text: <f> button quit </f>'
+		'<o> id: quit select: die text: <f> button quit </f> </o>'
 	)
 	load-default-config
 	init-var
