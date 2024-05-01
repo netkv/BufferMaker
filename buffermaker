@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.4.1"
+buffermaker_version="0.11.4.2" #"0.11.4.1"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -99,6 +99,7 @@ function load-default-config {
 		title "$(:weight bold)"
 		alt "$(:slant italic)"
 		highlight "\e[4m$(:weight bold)"
+		accent "$(:foreground yellow)"
 		background-highlight "$(:background black)"
 		dim "$(:weight dim)"
 		divider "$(:foreground gray)"
@@ -1970,6 +1971,8 @@ function redraw.content {
 	# redraw menu if open
 	[ "${bf_d[mode]}" = 'menu' ] && redraw.menu
 }
+
+
 
 ## print-buffer-line
 function print-buffer-line {
