@@ -243,6 +243,62 @@ function previous-test {
 	redraw
 }
 ################################################################################
+
+declare-buffer builtin
+bf_d+=(
+	[line]=1
+	[column]=0
+	[mode]=testui
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+buffer=(
+	''
+	'<h1> Builtin Buffers </h1>'
+	''
+	'<o> id: msgbox select: msgbox-test text: <f> button Msgbox </f> </o>'
+	'<o> id: dialogbox select: dialogbox-test text: <f> button Dialogbox </f> </o>'
+	'<-> <f> hint dialogbox-output </f>'
+)
+function msgbox-test {
+	local -a test_msgbox
+	local test_msgbox_title
+	
+	test_msgbox_title='Title'
+	test_msgbox=(
+		'<f> red A very serious error!!! </f>'
+		'<f> yellow But it might be just fine </f>'
+		"don't worry"
+	)
+	msgbox test_msgbox
+}
+
+function dialogbox-test {
+	local test_dialogbox_title='Question?'
+	local -a test_dialogbox=(
+		'<f> blue Would you like to buffer? </f>'
+		"<f> hint it's fine to buffer </f>"
+		'and now choose...'
+	)
+	dialogbox test_dialogbox
+}
+function test_dialogbox.yes {
+	box.close
+	buffer[5]='<-> <f> highlight YES </f>'
+	make-render-line 5
+	redraw
+}
+function test_dialogbox.no {
+	box.close
+	buffer[5]='<-> <f> highlight NO </f>'
+	make-render-line 5
+	redraw
+}
+
+
+
+################################################################################
 #                          Multi buffer example                                #
 ################################################################################
 function next-multi {
@@ -324,6 +380,7 @@ mapfile -t -O 1 buffer <<'EOF'
 <h> Demos </h>
 <-> <li> <link> switch-buffer counter : Test program </link>
 <-> <li> <link> switch-buffer formats : Format </link>
+<-> <li> <link> switch-buffer builtin : Builtin buffers </link>
 <-> <li> <link> next-multi : Multi buffer </link>
 
 <h> More Ebashs programs </h>

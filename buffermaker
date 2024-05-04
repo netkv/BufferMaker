@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.4.2" #"0.11.4.1"
+buffermaker_version="0.11.5" #"0.11.4.2"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -67,6 +67,16 @@ function load-default-config {
 			:: else menu.exit
 			:: disable-global 1
 
+	add-mode basic
+		:: '[left]' format-left
+		:: '[up]' format-up
+		:: '[right]' format-right
+		:: '[down]' format-down
+		:: RET link-enter
+		:: C-c die
+		mode-options
+			:: else :
+
 	## Faces
 	#		Defined in escape codes
 	#		Helper functions:
@@ -85,6 +95,8 @@ function load-default-config {
 	default_faces=(
 		reset '\e[m'
 		default "$(:weight normal)"
+		border-highlight "$(:mode inverse)"
+		border-shadow "$(:mode inverse :foreground gray)"
 		menu "$(:background yellow :foreground black)"
 		menu-divider "$(:underline t)"
 		menu-highlight "$(:weight bold :underline t)"
@@ -2071,7 +2083,6 @@ function keypress.mouse {
 ## insert-word
 # Insert \$1 to buffer
 function insert-word {
-	((options[save-states])) && save-state
 	local -i rlr
 	unset ta
 	local ta
@@ -2204,21 +2215,12 @@ function input-loop
 		}
 	done
 
+### INCLUDED BUFFERS
 
 function about {
-	add-mode about
-		:: '[left]' format-left
-		:: '[up]' format-up
-		:: '[right]' format-right
-		:: '[down]' format-down
-		:: RET link-enter
-		:: C-c die
-		mode-options
-			:: else :
-
 	declare-buffer about
 	bf_d+=(
-		[mode]=about
+		[mode]=basic
 		[syntax]=syntax-format
 		[syntax-exec]=1
 		[render-type]=per-char
@@ -2255,6 +2257,131 @@ function about {
 	redraw
 	obj quit
 	input-loop
+}
+
+function box.shadow {
+	bf_d+=(
+		[size-y]=${size_y}
+		[loc-y]=${loc_y}
+		[size-x]=${size_x}
+		[loc-x]=${loc_x}
+	)
+
+	declare-buffer msgbox_background
+	bf_d+=(
+		[mode]=none
+		[syntax]=syntax-none
+		[syntax-exec]=0
+		[render-type]=per-word
+		[background]=border-highlight
+
+		[size-y]=$((size_y + 2))
+		[loc-y]=$((loc_y - 1))
+		[size-x]=$((size_x + 2))
+		[loc-x]=$((loc_x - 1))
+	)
+	redraw
+
+	declare-buffer msgbox_shadow
+	bf_d+=(
+		[mode]=none
+		[syntax]=syntax-none
+		[syntax-exec]=0
+		[render-type]=per-word
+		[background]=border-shadow
+
+		[size-y]=$((size_y + 1))
+		[loc-y]=$((loc_y))
+		[size-x]=$((size_x + 1))
+		[loc-x]=$((loc_x))
+	)
+	redraw
+}
+
+function msgbox {
+	local return_to="${current_buffer}"
+	local -n message="${1}"
+	local -n message_title="${1}_title"
+	declare-buffer msgbox
+	bf_d+=(
+		[mode]=basic
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+		[return-to]="${return_to}"
+	)
+	buffer=(
+		''
+		''
+		"<h2> ${message_title} </h2>"
+		''
+	)
+	append-array message buffer
+	buffer+=(
+		''
+		'<s> 14 <f> hint <Enter> </f> <o> id: ok select: box.close right: : left: : up: : down: : text: <f> button  Ok  </f> </o>'
+	)
+	
+	local size_y=$((${#buffer[@]}))
+	local loc_y=$((LINES / 2 - ( ${#buffer[@]} - 1 ) / 2 ))
+	local size_x=40
+	local loc_x=$((COLUMNS / 2 - 20))
+
+	box.shadow
+	
+	set-buffer msgbox
+	redraw
+	obj ok
+}
+
+function dialogbox {
+	local return_to="${current_buffer}"
+	local -n message="${1}"
+	local -n message_title="${1}_title"
+	declare-buffer dialogbox
+	bf_d+=(
+		[mode]=basic
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+		[return-to]="${return_to}"
+	)
+	buffer=(
+		''
+		''
+		"<h2> ${message_title} </h2>"
+		''
+	)
+	append-array message buffer
+	buffer+=(
+		''
+		'<s> 2 '\
+"<o> id: yes select: ${1}.yes right: obj no left: : up: : down: : text: <f> button  Yes  </f> </o> "\
+"<o> id: no select: ${1}.no right: : left: obj yes up: : down: : text: <f> button  No  </f> </o>"
+	)
+	
+	local size_y=$((${#buffer[@]}))
+	local loc_y=$((LINES / 2 - ( ${#buffer[@]} - 1 ) / 2 ))
+	local size_x=40
+	local loc_x=$((COLUMNS / 2 - 20))
+		
+	bf_d+=(
+		[size-y]=${size_y}
+		[loc-y]=${loc_y}
+		[size-x]=${size_x}
+		[loc-x]=${loc_x}
+	)
+
+	box.shadow
+	
+	set-buffer dialogbox
+	redraw
+	obj no
+}
+
+function box.close {
+	set-buffer "${bf_d[return-to]}"
+	redraw
 }
 
 [[ "${BASH_SOURCE[0]}" = "${0}" ]] && about
