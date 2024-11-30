@@ -1,5 +1,5 @@
 #!/bin/bash
-buffermaker_version="0.11.5" #"0.11.4.2"
+buffermaker_version="0.11.6"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -14,6 +14,8 @@ declare -a k_hex buffers_l modes=('keys_global')
 declare -n buffer bf_s bf_e bf_d
 declare -i ismenu comment current_count
 declare reset readin
+
+source bxcommon
 
 function load-default-config {
 	## Configuration
@@ -178,16 +180,6 @@ function load-default-config {
 
 ## syntaxy sugar sugary syntax
 function @ifs { IFS="$DEFIFS"; }
-	
-function copy-function {
-	local -a fn
-	local deffn="function $2"$'\n'
-	mapfile fn <<<"$(declare -f "$1")"
-	for ((i=1; i<${#fn[@]}; i++)) {
-		deffn+="${fn[i]}"
-	}
-	eval "$deffn"
-}
 
 function ::
 case "$_last_add" in
@@ -244,31 +236,6 @@ function [auto] {
 	[ -z "${bf_d[syntax]}" ] && set-syntax 
 }
 
-## _ Variable refernce helper
-function _ {
-	# this function is here to simplify stuff as writing overlong variables indexed by overloong variable index...
-	# ...is quite tiring <3
-	[ -z "$1" ] && {
-		for n in "${refalias[@]}"; do
-			unset "$n"
-		done
-		unset refalias
-		return
-	}
-	declare -gn "$1"="$2"
-	refalias+=("$1")
-}
-
-## __ Swap variable references
-function __ {
-	# swap two references
-	local -n _swap_1="$1"
-	local _swap_copy_1="${!_swap_1}"
-	local -n _swap_2="$2"
-	local _swap_copy_2="${!_swap_2}"
-	declare -gn "$1"="${_swap_copy_2}"
-	declare -gn "$2"="${_swap_copy_1}"
-}
 
 ## fn Shorthand for one line functions
 function fn {
@@ -276,149 +243,6 @@ function fn {
 	local name="$1"
 	shift
 	eval "function $name { $@; }"
-}
-
-## copy-array
-# A univeral function to copy both normal and associative arrays
-function copy-array {
-	local -n source="$1"
-	local -n target="$2"
-	target=()
-	for idx in "${!source[@]}"; {
-		target[idx]="${source[idx]}"
-	}
-}
-
-## append-array
-# Append array \$1 to \$2  
-function append-array {
-	local -n source="$1"
-	local -n target="$2"
-	for idx in "${!source[@]}"; {
-		target+=("${source[idx]}")
-	}
-}
-
-## setface Convert colors to escape codes
-# '$1' can be either one of colors:
-#     black
-#     red
-#     green
-#     yellow
-#     blue
-#     magenta
-#     cyan
-#     ligth-gray
-#     gray
-#     light-red
-#     light-green
-#     light-yellow
-#     light-blue
-#     light-magenta
-#     light-cyan
-#     white
-# 'or hex. color (like "#bb2040")'
-# 'or indexed 256 color with "c" as prefix (like c127)'
-# 'for background color $mode has to be 48 and for foreground 38'
-#
-# If \$TERM \(current "$TERM"\) is \'linux\' \& option tty-linuxfb is 1 try to use true color even for tty
-# Instead of normal '\e[$mode;r;g;bm' is used '\e]P$~1mode$Hexcode\e[$~2modem'
-#     '$mode 38 → $~1mode 2 & $~2mode 32'
-#     '$mode 48 → $~1mode 1 & $~2mode 41'
-# Note that the linuxfb colors are very experimental and suffer from cursor implicitly overwriting them on movenment
-function setface {
-	[ -z "$1" ] && return
-	case "$1" in
-		black)      [ "$mode" = '38' ] && printf '\\e[30m' || printf '\\e[40m';;
-		red)        [ "$mode" = '38' ] && printf '\\e[31m' || printf '\\e[41m';;
-		green)      [ "$mode" = '38' ] && printf '\\e[32m' || printf '\\e[42m';;
-		yellow)     [ "$mode" = '38' ] && printf '\\e[33m' || printf '\\e[43m';;
-		blue)       [ "$mode" = '38' ] && printf '\\e[34m' || printf '\\e[44m';;
-		magenta)    [ "$mode" = '38' ] && printf '\\e[35m' || printf '\\e[45m';;
-		cyan)       [ "$mode" = '38' ] && printf '\\e[36m' || printf '\\e[46m';;
-		light-gray) [ "$mode" = '38' ] && printf '\\e[37m' || printf '\\e[47m';;
-
-		gray)          [ "$mode" = '38' ] && printf '\\e[90m' || printf '\\e[100m';;
-		light-red)     [ "$mode" = '38' ] && printf '\\e[91m' || printf '\\e[101m';;
-		light-green)   [ "$mode" = '38' ] && printf '\\e[92m' || printf '\\e[102m';;
-		light-yellow)  [ "$mode" = '38' ] && printf '\\e[93m' || printf '\\e[103m';;
-		light-blue)    [ "$mode" = '38' ] && printf '\\e[94m' || printf '\\e[104m';;
-		light-magenta) [ "$mode" = '38' ] && printf '\\e[95m' || printf '\\e[105m';;
-		light-cyan)    [ "$mode" = '38' ] && printf '\\e[96m' || printf '\\e[106m';;
-		white)         [ "$mode" = '38' ] && printf '\\e[97m' || printf '\\e[107m';;
-		*) case "${1::1}" in
-			   '#')
-				   if [ "$TERM" = 'linux' ] && ((options[tty-linuxfb])); then # Hack for linux framebuffer tty
-					   case "$mode" in
-						   38) printf '\\e]P2%s\\e[32m' "${1:1:6}" ;;
-						   48) printf '\\e]P1%s\\e[41m' "${1:1:6}"
-					   esac
-				   else
-					   local r="${1:1:2}"
-					   local g="${1:3:2}"
-					   local b="${1:5:2}"
-					   printf '\\e[%d;2;%d;%d;%dm' "${mode}" $((16#$r)) $((16#$g)) $((16#$b))
-				   fi;;
-			   'c')
-				   printf '\\e[%d;5;%dm' "${mode}" "${1:1}"
-		   esac
-	esac
-	shift
-	[ -n "$1" ] && "$@";
-}
-
-## :foreground
-# Set foreground color.
-# 'See <a> doc-goto setface : <f> link setface </f> </a> for more info.'
-function :foreground { mode=38; setface "$@"; }
-
-## :background
-# Set background color.
-# 'See <a> doc-goto setface : <f> link setface </f> </a> for more info.'
-function :background { mode=48; setface "$@"; }
-
-## :mode Sets text mode:
-# '	inverse - inverses background and foreground'
-function :mode {
-	case "$1" in
-		inverse) printf '\\e[7m';;
-	esac
-	shift
-	[ -n "$1" ] && "$@";
-}
-	
-## :weight Sets thickness of text:
-#     bold
-#     dim
-#     normal
-function :weight {
-	case "$1" in
-		bold) printf '\\e[1m';;
-		dim) printf '\\e[2m';;
-		normal) printf '\\e[m'
-	esac
-	shift
-	[ -n "$1" ] && "$@";
-}
-
-## :slant Sets slant of text:
-#     italic
-#     normal
-function :slant {
-	case "$1" in
-		italic) printf '\\e[3m';;
-		normal) printf '\\e[m'
-	esac
-	shift
-	[ -n "$1" ] && "$@";
-}
-function :underline {
-	case "$1" in
-		t) printf '\\e[4m';;
-		nil) printf '\\e[m'
-	esac
-	shift
-	[ -n "$1" ] && "$@";
 }
 	
 ## kbd Converts Emacs like key notation into hex.
@@ -916,6 +740,17 @@ function syntax-none {
 	set-face "${bf_d[background]:-default}"
 }
 
+
+########################################################################################################################
+function format-include {
+	_buffer="$current_buffer"
+	for bf in "${format_include_buffers[@]}"; do
+		set-buffer "$bf"
+		redraw
+	done
+	set-buffer "$_buffer"
+}
+
 function syntax-format {
 	((skip_word==1)) && {
 		skip_next_space=1
@@ -927,6 +762,26 @@ function syntax-format {
 		skip_word=1
 		return
 	}
+
+	((insert_bf==1)) && {
+		skip_next_space=1
+		[ "$word" = '>>' ] && {
+			insert_bf=0
+			format_include_buffers+=("${insert_arg[1]}")
+			insert_arg=()
+			return
+		}
+		insert_arg+=("$word")
+		return
+	}
+	[ "$word" = '<<' ] && {
+		skip_next_space=1
+		insert_bf=1
+		insert_arg=()
+		return
+	}
+
+	
 	((newline==1)) && {
 		bf_t[ichar]="${bf_t[indent_spaces]}"
 		bf_t[iexp]="${bf_t[indent_spaces_e]}"
@@ -1574,6 +1429,7 @@ function toggle-checkbox {
 	make-render-line "$1"
 	redraw
 }
+########################################################################################################################
 
 fn is-function 'declare -F -- "$1" > /dev/null'
 

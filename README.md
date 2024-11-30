@@ -6,6 +6,12 @@ BufferMaker is the result of me trying to add too stuff into the Ebashs project,
 
 Ebashs and thus BufferMaker are based on https://github.com/comfies/bed.
 
+# BXcommon
+
+This is collection of functions from that have no relation to making TUI and are useful outside of BufferMaker
+
+BufferMaker depends on it for function.
+
 ## Basics
 
 First step in creating user interface is creating a buffer. Buffer is collection of arrays used to display stuff.
