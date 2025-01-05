@@ -174,7 +174,7 @@ function dialogbox-test {
 	)
 	dialogbox test_dialogbox
 }
-unction test_dialogbox.yes {
+function test_dialogbox.yes {
 	box.close
 	<do something when yes>
 }
