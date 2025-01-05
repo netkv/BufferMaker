@@ -1,0 +1,64 @@
+#!/bin/bash
+source bxcommon
+function set-tmp-dir {
+	declare -g _bx_tmp_dir="$1"
+	need-not-empty _bx_tmp_dir
+	need-directory "/tmp/${_bx_tmp_dir}"
+}
+
+function mk-tmp-dir {
+	declare -g _bx_tmp_dir="$1"
+	need-not-empty _bx_tmp_dir
+	mkdir "/tmp/${_bx_tmp_dir}"
+}
+
+function rm-tmp-dir {
+	need-not-empty _bx_tmp_dir
+	need-directory "/tmp/${_bx_tmp_dir}"
+	rm -rf "/tmp/${_bx_tmp_dir}"
+}
+
+function assign-tmp-file {
+	need-not-empty-value "$1"
+	need-directory "/tmp/${_bx_tmp_dir}"
+	local file="/tmp/${_bx_tmp_dir}/${1}"
+	local -n value="$1"
+	printf '%s\n' "$value" > "${file}"
+}
+
+function scan-tmp-file {
+	need-not-empty-value "$1"
+	need-directory "/tmp/${_bx_tmp_dir}"
+	local file="/tmp/${_bx_tmp_dir}/${1}"
+	need-file "$file"
+	local -n value="$1"
+	value="$(<"$file")"
+}
+
+function assign-tmp-file-array {
+	need-not-empty-value "$1"
+	need-directory "/tmp/${_bx_tmp_dir}"
+	local file="/tmp/${_bx_tmp_dir}/${1}"
+	local -n value="$1"
+	: > "${file}"
+	for __item in "${value[@]}"; do
+		printf '%s\n' "$__item" >> "${file}"
+	done
+}
+
+function scan-tmp-file-array {
+	need-not-empty-value "$1"
+	need-directory "/tmp/${_bx_tmp_dir}"
+	local file="/tmp/${_bx_tmp_dir}/${1}"
+	need-file "$file"
+	local -n value="$1"
+	mapfile -t value < "$file"
+}
+
+function rm-tmp-file {
+	need-not-empty-value "$1"
+	need-directory "/tmp/${_bx_tmp_dir}"
+	local file="/tmp/${_bx_tmp_dir}/${1}"
+	need-file "$file"
+	rm "$file"
+}
