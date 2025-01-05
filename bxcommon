@@ -1,4 +1,5 @@
 #!/bin/bash
+bxcommon_version="2025-01-05"
 ### collection of useful bash functions
 ### part of bashbox/buffermaker BashOS project
 
@@ -9,8 +10,52 @@ function copy-array {
 	local -n target="$2"
 	target=()
 	for idx in "${!source[@]}"; {
-		target[idx]="${source[idx]}"
+		target["${idx}"]="${source[${idx}]}"
 	}
+}
+function copy-array.meta {
+	_f_name="copy-array"
+	_f_id="copy-array"
+	_f_argn=2
+	_f_arg1=2:in
+	_f_arg2=2:out
+}
+
+function copy-array.check {
+	local -a a=($RANDOM $RANDOM $RANDOM)
+	unset "a[1]"
+	local -a b=()
+	copy-array a b
+	((b[0]==a[0])) &&
+		((b[1]==a[1])) &&
+		((b[2]==a[2])) ||
+			error "Function [bx_]copy-array[.check] validation check failed at numeric array"
+	local -A c=([aa]=$RANDOM [a a]=$RANDOM [ a a]=$RANDOM)
+	unset "c[a a]"
+	local -A d
+	copy-array c d
+	((${d[aa]}==${c[aa]})) &&
+		[ "${d[a a]}" = "${c[a a]}" ] &&
+		((${d[ a a]}==${c[ a a]})) ||
+			error "Function [bx_]copy-array[.check] validation check failed at associative array"
+	_
+	_check-pass "${_f_name}" "${_f_id}"
+}
+
+function _check-pass {
+	printf '\e[32m%s (%s) passed function check\e[m' "$1" "$2"
+}
+
+function import-function {
+	"$1.meta" || error "Function $1 has no metadata"
+	copy-function "${_f_id}" "${_f_name}"
+	copy-function "${_f_id}.meta" "${_f_name}.meta"
+}
+
+function validate {
+	local -n source="$1"
+	local target="$2"
+	[ "$source" = "$target" ] || error "Function validation failed for property $1 of value $source, expected $target"
 }
 
 ## append-array
@@ -19,9 +64,27 @@ function append-array {
 	local -n source="$1"
 	local -n target="$2"
 	for idx in "${!source[@]}"; {
-		target+=("${source[idx]}")
+		target+=("${source[${idx}]}")
 	}
 }
+
+function arg-copy {
+	local -n target="$1"
+	shift
+	for ((i=1;i<=$#;i++)); do
+		target[i]="${!i}"
+	done
+}
+
+function arg-append {
+	local -n target="$1"
+	shift
+	for ((i=1;i<=$#;i++)); do
+		target+=("${!i}")
+	done
+}
+
+
 
 function print-array {
 	local -n source="$1"
@@ -194,3 +257,80 @@ function :underline {
 	shift
 	[ -n "$1" ] && "$@";
 }
+
+function has-command {
+	command -v "$1" >/dev/null 2>&1
+}
+function has-array-item {
+	local -n source="$1" 
+	local target="$2"
+	local _has=no
+	for idx in "${!source[@]}"; {
+		[ "${source[idx]}" = "${target}" ] && _has=yes && return 0
+	}
+	return 1
+}
+
+
+function need-command {
+	command -v "$1" >/dev/null 2>&1 || error "command ${1} not found"
+}
+function need-not-empty {
+	local -n source="$1"
+	[ -z "${source}" ] && error "variable ${1} is empty"
+}
+function need-not-empty-value {
+	local source="$1"
+	[ -z "${source}" ] && error "variable ${1} has empty value"
+}
+function need {
+	#exit if var doesnt match expectation
+	local -n source="$1"
+	local target="$2"
+	[ "${source}" = "${target}" ] || error "variable ${1} isn't expected ${2}"
+}
+function need-value {
+	#exit if var doesnt match expectation
+	local source="$1"
+	local target="$2"
+	[ "${source}" = "${target}" ] || error "variable ${1} doesn't have expected value ${2}"
+}
+function need-array-item {
+	#exit if var doesnt match expectation
+	local -n source="$1" 
+	local target="$2"
+	local _has=no
+	for idx in "${!source[@]}"; {
+		[ "${source[idx]}" = "${target}" ] && _has=yes && return
+	}
+	error "array ${1} doesn't have expected item with value ${2}"
+}
+function need-file {
+	[ -f "${1}" ] || error "file ${1} doesn't exist"
+}
+function need-directory {
+	[ -d "${1}" ] || error "directory ${1} doesn't exist"
+}
+
+function error {
+	printf '\e[31;1m[error] \e[0;31m%s\e[m\n' "$@"
+	exit 1
+}
+
+function __bxcommon-about {
+	echo "version: ${bxcommon_version}"
+}
+function bxcommon-check {
+	true
+}
+
+## base-name
+# Basically equivalent to the "'basename'" coreutil		
+function base-name {
+	for file in "$@"; {
+		file="${file%/}"
+		printf '%s\n' "${file##*/}"
+	}
+}
+				
+[[ "${BASH_SOURCE[0]}" = "${0}" ]] && __bxcommon-about

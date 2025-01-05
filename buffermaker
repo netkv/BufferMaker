@@ -1,5 +1,6 @@
 #!/bin/bash
-buffermaker_version="0.11.6"
+buffermaker_version="0.11.7X 2025-01-05"
+bxformat_version="integrated 2023-07-23"
 ## Buffermaker
 # Pure bash tui framework (wip)
 
@@ -16,6 +17,8 @@ declare -i ismenu comment current_count
 declare reset readin
 
 source bxcommon
+bxcommon-check || { printf '\e[1;31mERROR bxcommon not in PATH\e[m\n'; exit 1; }
+
 
 function load-default-config {
 	## Configuration
@@ -490,14 +493,6 @@ function read-command {
 	printf '\e[?25h'
 	read -re -p "$1" -i "$3" "$2" || return 1
 }
-
-## base-name
-# Basically equivalent to the "'basename'" coreutil		
-function base-name
-	for file in "$@"; {
-		file="${file%/}"
-		printf '%s\n' "${file##*/}"
-	}
 
 ### TODO: make this make sense
 
@@ -1429,6 +1424,8 @@ function toggle-checkbox {
 	make-render-line "$1"
 	redraw
 }
+
+
 ########################################################################################################################
 
 fn is-function 'declare -F -- "$1" > /dev/null'
@@ -2084,18 +2081,22 @@ function about {
 	buffer=(
 		''
 		'<h1> About Buffermaker </h1>'
+		'<subh1> BashboX Text Buffer Maker  </subh1>'
 		''
 		'Buffermaker version: <f> hint <v> buffermaker_version </f>'
+		'BXcommon version: <f> hint <v> bxcommon_version </f>'
+		'BXformat version: <f> hint <v> bxformat_version </f>'
 		'Bash version: <f> hint <v> BASH_VERSION </f>'
 		'Terminal: <f> hint <v> TERM </f>'
 		''
 		'<hr>'
 		''
-		'Aeknt 2022-2024'
-		'Repo: https://github.com/aeknt/BufferMaker' 
-		'(Based on Bed https://github.com/comfies/bed Comfies 2020)'
+		'<f> highlight Netkv </f> 2022-2025'
+		'Repo: <f> link https://github.com/netkv/BufferMaker </f>' 
+		'(Based on Bed </f> link https://github.com/comfies/bed </f> Comfies)'
 		''
 		'<h3> Licence </h3> <f> yellow (BSD-0) </f>'
+		'<indent> &tab'
 		'Permission to use, copy, modify, and/or distribute this software for any purpose'
 		'with or without fee is hereby granted.'
 		''
@@ -2104,7 +2105,7 @@ function about {
 		'IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT,'
 		'OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA'
 		'OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,'
-		'ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.'
+		'ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. </indent>'
 		''
 		'<o> id: quit select: die text: <f> button quit </f> </o>'
 	)
@@ -2154,6 +2155,9 @@ function box.shadow {
 	redraw
 }
 
+## msgbox
+# ${1} is the name of the buffer of msgbox
+# the ${<value of ${1}>_title} is title of msgbox 
 function msgbox {
 	local return_to="${current_buffer}"
 	local -n message="${1}"
