@@ -1,4 +1,5 @@
 # BufferMaker
+## BashboX Text Buffer Maker
 
 Pure Bash TUI framework
 
@@ -137,23 +138,53 @@ The most powerfull of format nonsense. Use `obj <id>` function to move cursor to
 ```
 <s> number-of-spaces
 
-<i> number-of-spaces
+<indent> &tab
 text
 ...
-</i>
+</indent>
 
 <tab> (= <->)
-<i-tab>
-text
-...
-</i>
 ```
 ### variables
 ```
 <v> varname
 ```
 
-## Helper functions
+### integrated buffers
+```bash
+function msgbox-test {
+	local -a test_msgbox
+	local test_msgbox_title
+	
+	test_msgbox_title='Title'
+	test_msgbox=(
+		'<f> red A very serious error!!! </f>'
+		'<f> yellow But it might be just fine </f>'
+		"don't worry"
+	)
+	msgbox test_msgbox
+}
+
+function dialogbox-test {
+	local test_dialogbox_title='Question?'
+	local -a test_dialogbox=(
+		'<f> blue Would you like to buffer? </f>'
+		"<f> hint it's fine to buffer </f>"
+		'and now choose...'
+	)
+	dialogbox test_dialogbox
+}
+unction test_dialogbox.yes {
+	box.close
+	<do something when yes>
+}
+function test_dialogbox.no {
+	box.close
+	<do something when no>
+}
+```
+
+## BXcommon functions
 
 ### Array manipulation (both asscociative and indexed arrays)
 `copy-array source target`
