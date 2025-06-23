@@ -7,7 +7,12 @@ BufferMaker is the result of me trying to add too stuff into the Ebashs project,
 
 Ebashs and thus BufferMaker are based on https://github.com/comfies/bed.
 
-# BXcommon
+# BX*
+
+Now Buffermaker has been split even more, in future these splitted scripts will be usable on their own, but nows it's just BXInput and BXCommon that can have any use outside of buffermaker.
+Buffermaker depends on them all.
+
+## BXcommon
 
 This is collection of functions from that have no relation to making TUI and are useful outside of BufferMaker
 
@@ -134,6 +139,20 @@ The most powerfull of format nonsense. Use `obj <id>` function to move cursor to
 ```
 <o> id: id select: to-do-on-enter right: on-move-right left: on-left up: on-up down: down text: text </o>
 ```
+### large buttons
+
+They behave similarly to objects, and in fact are objects, so you can't put object into lbt or other way around.
+
+They're 3 lines tall, and require 3 instances of `<lbt></lbt>` pairs with same id as shown in example.
+
+width: is optional, without it buffermaker calculates needed minimum width automatically
+
+```
+'<lbt> id: id left: to-do-on-left up: to-do-on-up down: to-do-on-down right: to-do-on-right select: to-do-on-enter width: width text: text </lbt>'
+'<lbt> id: id </lbt>'
+'<lbt> id: id </lbt>'
+```
+
 ### positioning
 ```
 <s> number-of-spaces
