@@ -1,0 +1,13 @@
+#!/bin/bash
+source bxcommon
+source bxinput
+declare -A bf_d
+add-mode hello
+local-set-key "$(kbd q)" exit
+local-set-key "$(kbd h)" h
+local-set-mode-option else :
+function h {
+	echo hi
+}
+bf_d[mode]=hello
+input-loop

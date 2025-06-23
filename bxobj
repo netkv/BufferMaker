@@ -1,0 +1,101 @@
+#!/bin/bash
+source bxcommon
+
+
+function boilerplate {
+	local -a fn
+	local deffn="function $2"$'\n'
+	mapfile fn <<<"$(declare -f "$1")"
+	
+	deffn+="${fn[1]}"
+	deffn+="$(injectobj)"
+	for ((i=2; i<${#fn[@]}; i++)) {
+		deffn+="${fn[i]}"
+	}
+		
+	eval "$deffn"
+}
+
+function injectobj {
+	echo local -n "${_obj[target]}"='_obj[value]'\;
+}
+
+function construct {
+	declare -ag _level=(construct)
+	declare -ag _path=("${1}")
+
+	
+	function type: { _hold[type]="${1}"; }
+	function target: { _hold[target]="${1}"; }
+	function value: { _hold[value]="${1}"; }
+
+	function field {
+		_level+=('field')
+		_path+=("${1}")
+		declare -Ag "_hold_${1}"
+		declare -ng _hold="_hold_${1}"
+		_hold[name]="${1}"
+		_hold=()
+	}
+	function field:finish {
+		_hold[path]=''
+		for __frag in "${_path[@]}"; do
+			_hold[path]+=".${__frag}"
+		done
+		_hold[path]="${_hold[path]:1}"
+		#echo "${_hold[path]}"
+		local -n type=_hold[type]
+		case "$type" in
+			var) field:var "${_hold[path]}" "${_hold[name]}" "${_hold[value]}";;
+			com) field:com "${_hold[path]}" "${_hold[name]}";;
+			*) error "unsupported type $type";;
+			esac
+	}
+	function field:var {
+		eval "function ${1} { echo ${3}; }"
+		eval "function ${1}.set { eval \"function ${1} { echo "'${1}'"; }\" ; }"
+	}
+	function field:com {
+		copy-function value "${1}"
+	}
+
+	
+	function }, {
+		case "${_level[-1]}" in
+			'construct')			  
+				;;
+			'field')
+				field:finish;;
+			*)
+				error 'Object subgroup unsupported' "_level[-1]=${_level[-1]}"
+		esac
+		unset _level[-1]
+		unset _path[-1]
+	}
+}
+ a=sex
+ 
+construct hello {
+	field x {
+		type: var
+		value: 4
+	},
+	field y {
+		type: var
+		value: 2
+	},
+	field square {
+		type: com
+		value() {
+			x="$(hello.x)"
+			y="$(hello.y)"
+			echo "$((x*y))"
+		}
+	},
+	
+},
+
+
+hello.x.set 9
+hello.y.set 8
+hello.square

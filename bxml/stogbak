@@ -1,0 +1,77 @@
+#!/bin/bash
+IFS=''
+source bxcommon
+declare -a out
+
+function transform {
+	local -n source="$1"
+	for idx in "${!source[@]}"; {
+		printf '%s' "${source[idx]}"
+	}
+}
+function split {
+	local -n source="$1"
+	local -n odd="$2"
+	local -n even="$3"
+	odd=()
+	even=()
+	_c=1
+	for idx in "${!source[@]}"; {
+		((_c==1)) && {
+			odd+=("${source[${idx}]}")
+			_c=2
+			continue
+		}
+		((_c==2)) && {
+			even+=("${source[${idx}]}")
+			_c=1
+			continue
+		}
+	}
+}
+
+function debug {
+	local -n a="$1"
+	local -n b="$2"
+	for idx in "${!a[@]}"; {
+		printf 'a(\e[1;32m%s\e[m) v(\e[1;35m%s\e[m) c(\e[1;35m%s\e[m)\n' "${1}" "${a[idx]}" "${b[idx]}"
+	}
+}
+
+shopt -s lastpipe
+function lex {
+	mapfile -t -d '' input
+	transform input | mapfile -t -d '"' literal
+	split literal step0 string
+
+	{ transform step0; echo; }| while
+		read -r -d $'\n' item; do
+		step1+="$item "; done
+	
+	echo "${step1}"$'\t' | while
+		read -r -d $'\t' item; do
+		step2+="$item "; done
+	
+	echo "${step2}"' ' | while
+		read -r -d ' ' item; do
+		[ "$item" = '' ] && continue
+		step3+="$item "
+	done
+	
+	transform step3 | mapfile -t -d ' ' control
+}
+function parse {
+	# this function expects two arrays
+	# $1 being array of control sequences
+	# $2 being array of literal string values in order
+	local -n __inc="$1"
+	local -n __ins="$2"
+	for __key in "${inc[@]}"; do
+		:
+	done
+}
+lex < data.stog
+
+#parse control string
+
+debug-array control

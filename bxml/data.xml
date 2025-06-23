@@ -1,0 +1,12 @@
+<root>
+	<sec1 class="the first one" id="hello" >
+		<a> element===============1 </a>
+		<b fuck="idk that" > 2 </b>
+		<c> 3 </c>
+	</sec1>
+	<sec2>
+		<a> 4 </a>
+		<b class="the first two" id="sex" > 5%%%%%%%%%%%%%%%%%% </b>
+		<c> 6 </c>
+	</sec2>
+</root>

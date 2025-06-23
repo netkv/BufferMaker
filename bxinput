@@ -1,0 +1,292 @@
+#!/bin/bash
+bxinput_version="2025-04-08 Ex"
+## bxinput
+# universal bash event loop and input handler
+
+#many of these redundant, TODO: fix
+shopt -s lastpipe # For syntax highlighting
+#shopt -s extglob # Ensure advanced pattern matching is available
+shopt -s checkwinsize && (:;:) # Enable and then trigger a terminal size refresh
+
+[ -z "${DEFIFS}" ] && declare -r DEFIFS="$IFS"
+declare -A highlight faces faces_raw options charmap hooks resources
+declare -A keys_global
+declare -a k_hex buffers_l modes=('keys_global')
+declare -i ismenu comment current_count
+declare reset readin
+
+
+function load-default-config {					  
+	options=(
+#		[mouse]=0
+		[esc-to-meta]=0
+	)
+	add-mode empty
+		mode-options
+			:: else :
+			:: disable-global 1
+}
+
+
+## add-mode
+# Adds keybing mode
+function add-mode {
+	_last_keys="$1"
+	_last_add='add-mode'
+	modes+=("keys_$1")
+	declare -Ag "keys_$1"
+	declare -Ag "key_options_$1"
+}
+## define-mode-option
+# Sets option of mode '$1'
+function define-mode-option {
+	local -n ko="key_options_$1"
+	ko["$2"]="$3"
+}
+
+## local-set-mode-option See define-mode-option
+function local-set-mode-option { define-mode-option "$_last_keys" "$@"; }
+
+## mode-options Brings mode-options of lastly defined mode into \"focus\"
+function mode-options { _last_add="mode-options"; }
+
+
+## local-set-key
+# Sets keybinding of lastly defined mode
+# See define-key for details
+function local-set-key { define-key "$_last_keys" "$@"; }
+
+## global-set-key
+# Sets keybinding of global mode
+# See define-key for details
+function global-set-key { define-key global "$@"; }
+
+
+## kbd Converts Emacs like key notation into hex.
+function kbd {
+	local -i i=0 ch=0
+	local in out
+	# Surely there is better solution...
+	case "${1:0:2}" in
+		M-) in="${1:2:1}";;
+		*) in="$1"
+	esac
+	echo "$in" | {
+		while read -rsn1; do
+			out+="$(printf "%x\n" "'${in:$i}") "
+			((i++))
+		done
+	}
+	out=${out::-1}
+	printf '%s' "${out}"
+}
+
+## define-key defines keybinding
+#     '$1' can be either:
+#     '[function-key]'
+#     '[arrow-key]'
+#     '[prior | next]'
+#     'RET'
+#     'DEL'
+#     '[delechar]'
+#     'hex code ending with 0'
+function define-key {
+	local -n keys="keys_$1"
+	case "$2" in
+		#control
+		C-a) keys[1 0]="$3" ;; C-b) keys[2 0]="$3" ;;
+		C-c) keys[3 0]="$3" ;; C-d) keys[4 0]="$3" ;;
+		C-e) keys[5 0]="$3" ;; C-f) keys[6 0]="$3" ;;
+		C-g) keys[7 0]="$3" ;; C-h) keys[8 0]="$3" ;;
+		C-i) keys[9 0]="$3" ;; C-j) keys[a 0]="$3" ;;
+		C-k) keys[b 0]="$3" ;; C-l) keys[c 0]="$3" ;;
+		C-m) keys[d 0]="$3" ;; C-n) keys[e 0]="$3" ;;
+		C-o) keys[f 0]="$3" ;; C-p) keys[10 0]="$3";;
+		C-q) keys[11 0]="$3";; C-r) keys[12 0]="$3";;
+		C-s) keys[13 0]="$3";; C-t) keys[14 0]="$3";;
+		C-u) keys[15 0]="$3";; C-v) keys[16 0]="$3";;
+		C-w) keys[17 0]="$3";; C-x) keys[18 0]="$3";;
+		C-y) keys[19 0]="$3";; C-z) keys[1a 0]="$3";;
+		#function keys
+		'[f1]') keys[1b 4f 50 0]="$3";;
+		'[f2]') keys[1b 4f 51 0]="$3";;
+		'[f3]') keys[1b 4f 52 0]="$3";;
+		'[f4]') keys[1b 4f 53 0]="$3";;
+		'[f5]')  keys[1b 5b 31 35 7e 0]="$3";;
+		'[f6]')  keys[1b 5b 31 37 7e 0]="$3";;
+		'[f7]')  keys[1b 5b 31 38 7e 0]="$3";;
+		'[f8]')  keys[1b 5b 32 39 7e 0]="$3";;
+		'[f9]')  keys[1b 5b 32 30 7e 0]="$3";;
+		'[f10]') keys[1b 5b 32 31 7e 0]="$3";;
+		'[f11]') keys[1b 5b 32 33 7e 0]="$3";;
+		'[f12]') keys[1b 5b 32 34 7e 0]="$3";;
+		#arrow keys
+		'[left]')  keys[1b 5b 44 0]="$3";;
+		'[up]')    keys[1b 5b 41 0]="$3";;
+		'[right]') keys[1b 5b 43 0]="$3";;
+		'[down]')  keys[1b 5b 42 0]="$3";;
+		#pg up & down
+		'[prior]') keys[1b 5b 36 7e 0]="$3";;
+		'[next]')  keys[1b 5b 35 7e 0]="$3";;
+		#return
+		'RET') keys[a 0]="$3";;
+		#space
+		'SPC') keys[20 0]="$3";;
+		#backspace & delete
+		'DEL') keys[7f 0]="$3";;
+		'[deletechar]') keys[1b 5b 33 7e 0]="$3";;
+		'ESC') keys[1b 0 0]="$3";;
+		#scroll
+		'[wheel-up]')  keys[1b 4f 41 0]="$3";;
+		'[wheel-down]')  keys[1b 4f 42 0]="$3";;
+
+		*) keys["$2"]="$3"
+	esac
+}
+
+## keypress.mouse
+# Handle mouse click
+# function keypress.mouse {
+# 	local -i x y
+# 	#parse mouse stuff somewhatish weirdly
+# 	[ "${k_hex[*]:0:5}" = '1b 5b 3c 36 34' ] && previous-line && return
+# 	[ "${k_hex[*]:0:5}" = '1b 5b 3c 36 35' ] && next-line && return
+# 	[ "${k_hex[*]:0:5}" = '1b 5b 3c 38 30' ] && previous-line 9 && return
+# 	[ "${k_hex[*]:0:5}" = '1b 5b 3c 38 31' ] && next-line 9 && return
+# 	((skipnext==1)) && skipnext=0 && return
+# 	((skipnext==0)) && [ "${k_hex[*]:0:2}" = '1b 5b' ] && {
+# 		mapfile -t -d '' inputarray <<< "${1}"
+# 		inputarray[-1]="${inputarray[-1]%?}"
+# 		[ -z "${inputarray[2]}" ] && skipnext=1
+# 		mapfile -t -d ';' inputarray <<< "${inputarray[1]}"
+# 		inputarray[-1]="${inputarray[-1]%?}"	
+# 		mousemode="${inputarray[0]}"
+# 		x="${inputarray[1]}"
+# 		y="${inputarray[2]::-1}"
+# 		#limitations of movenment
+# 		#TODO:
+# 		((x < (bf_d[number-length] + bf_d[loc-x] + 2))) && {
+# 			if [ "$mousemode" = '[<0' ]; then
+# 				bf_d[line]=$(( bf_d[base] + (y - bf_d[loc-y]) ))
+# 				redraw
+# 			elif [ "$mousemode" = '[<2' ]; then #VERY BAD SOLUTION, TODO: FIX
+# 				clear-screen
+# 				echo 'Enter the index: '
+# 				read -re line
+# 				redraw
+# 			fi
+# 			return
+# 		}
+# 		bf_d[line]=$(( bf_d[base] + ( y - bf_d[loc-y] - 1) ))
+# 		bf_d[column]=$(( x - (bf_d[loc-x] + bf_d[number-length] + 1) ))
+# 		((bf_d[line] > ${#bf_e[@]})) &&
+# 			bf_d[line]=${#bf_e[@]}
+# 		((bf_d[column] > ${#bf_e[bf_d[line]]})) &&
+# 			bf_d[column]=${#bf_e[bf_d[line]]}
+# 		redraw
+# 	}
+# }
+
+## keypress Handles input
+# Either \$1 raw character input or k_hex array containing hex values of characters is used
+function keypress {
+	#arg $1 is the pressed key in normal text form
+	#k_hex is pressed key in hex array ending with 0
+		
+	local -i mode_contains=0
+	local -n modekeys="keys_${bf_d[mode]}"\
+	         key_options="key_options_${bf_d[mode]}"
+
+	# global keys
+	((key_options[disable-global])) ||
+		for str in "${!keys_global[@]}"
+		{
+			[ "$str" = "${k_hex[*]}" ] && {
+				"${keys_global[$str]}"
+				return
+			}
+		}
+
+	# Execute the 'always' key option
+	((${#key_options[@]})) &&
+		[ -n "${key_options[always]}" ] && "${key_options[always]}"
+
+	# Loop over current mode keybindings to match current keypress
+	for str in "${!modekeys[@]}"
+	{
+		[ "$str" = "${k_hex[*]}" ] && {
+			"${modekeys[$str]}"
+			mode_contains=1
+		}
+	}
+
+	# If mode keybinding doesn't contain current keypress, execute this
+	((${#key_options[@]})) &&
+		((mode_contains == 0)) &&
+		[ -n "${key_options[else]}" ] && {
+			[ "${key_options[else]}" = 'insert' ] || {
+				"${key_options[else]}" && return
+			}
+		}
+
+	# Do not continue if mode contains keypress to prevent control chars flooding file
+	((mode_contains==1)) && return
+
+	# If mouse is enabled, do whatever the hell that ugly piece of code does
+#	(("${options[mouse]}"==1)) && {
+#		keypress.mouse "$1"
+#		return
+#	}
+
+	# Insert the pressed character
+	[[ $1 =~ [[:cntrl:]] ]] && return # If char is control char, return
+	insert-word "$1"
+}
+
+function init-var {
+	if ((options[esc-to-meta])); then
+		esc_timeout=123456789 # a very big number
+	else
+		esc_timeout=0.01
+	fi
+#	((options[mouse])) && echo -ne "\e[?1000;1006;1015h" #enable mouse tracking
+}
+
+
+## main Main keyboard loop
+function input-loop {
+	while :; do
+		local -a k=()
+		local -i i=1
+		k_hex=() # Also convert the input sequence into hex for way easier handling
+		# Check for ready input
+		read -rsN1 k[0] && {
+			k_hex[0]="$(printf "%x\n" "'${k[0]}")"
+
+			# Hack to try preventing arrow codes being split into multiple and inserting garbage to buffer
+			[ "${k_hex[0]}" = '1b' ] && {
+				read -rsN1 -t "${esc_timeout}" k[1]
+				k_hex[1]="$(printf "%x\n" "'${k[1]}")"
+				[ "${k_hex[1]}" = '5b' ] && {
+					read -rsN1 k[2]
+					k_hex[2]="$(printf "%x\n" "'${k[2]}")"
+					case "${k_hex[2]}" in
+						'41'|'42'|'43'|'44')
+							k_hex[3]='0'
+							keypress "${k[@]}"
+							continue
+					esac
+					i=2
+				}
+				((i++))
+			}
+			# Multibyte hack
+			while read -rsN1 -t0.0001 k[$i]; do
+				k_hex[$i]="$(printf "%x\n" "'${k[$i]}")"
+				((i++))
+			done
+			k_hex[$i]='0'
+			keypress "${k[@]}" # Handle keypress event
+		}
+	done
+}

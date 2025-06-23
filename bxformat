@@ -1,0 +1,796 @@
+#!/bin/bash
+bxformat_version="f2r4"
+
+function syntax-format {
+	((skip_word==1)) && {
+		skip_next_space=1
+		[ "$word" = '-->' ] && skip_word=0
+		return
+	}
+	[ "$word" = '<!--' ] && {
+		skip_next_space=1
+		skip_word=1
+		return
+	}
+	
+	((newline==1)) && {
+		bf_t[ichar]="${bf_t[indent_spaces]}"
+		bf_t[iexp]="${bf_t[indent_spaces_e]}"
+	}
+	((newline==0)) && {
+		bf_t[ichar]=
+		bf_t[iexp]=
+	}
+	((escape==2)) && {
+		escape=1
+		facename="$word"
+		skip_next_space=1
+		return
+	}
+	((escape==1)) && {
+		escape=0
+		[ -z "$word" ] && return
+		face "$facename" "${bf_t[ichar]}$word"
+		return
+	}
+	[ -z "$word" ] && return
+	[ "$word" = '<\>' ] && {
+		escape=1
+		skip_next_space=1
+		facename='unknown'
+		return
+	}
+	[ "$word" = '<[>' ] && {
+		escape=2
+		skip_next_space=1
+		return
+	}
+	((variable==1)) && {
+		variable=0
+		word="${!word}"
+	}
+	[ "$word" = '<v>' ] && {
+		variable=1
+		varname=
+		skip_next_space=1
+		return
+	}
+	
+	[ "$word" = '</u>' ] && {
+		upper=0
+		skip_next_space=1
+		return
+	}
+	[ "$word" = '<u>' ] && {
+		upper=1
+		skip_next_space=1
+		return
+	}
+	[ "$word" = '</f>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		((column--))
+		unset facename
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	[ "$word" = '</f->' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		((column--))
+		skip_next_space=1
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	((facedef==1)) && {
+		skip_next_space=1
+		facedef=0
+		facename="$word"
+		return
+	}
+	case "$word" in
+		'<f>')
+			bckfacename="$facename"
+			skip_next_space=1
+			facedef=1
+			return;;
+		'<-f>')
+			unset linearray[-1]
+			bf_e[line]=${bf_e[line]::-1}
+			((column--))
+			bckfacename="$facename"
+			skip_next_space=1
+			facedef=1
+			return;;
+		
+		'</h>'|'</h3>')
+			unset linearray[-1]
+			bf_e[line]=${bf_e[line]::-1}
+			((column--))
+			unset facename
+			upper=0
+			[ -n "$bckfacename" ] && {
+				facename="$bckfacename"
+				unset bckfacename
+			}
+			return;;
+		'<h>'|'<h3>')
+			bckfacename="$facename"
+			skip_next_space=1
+			facename=title
+			upper=1
+			return;;
+		
+		'</b>'|'</strong>'|'</i>')
+			unset linearray[-1]
+			bf_e[line]=${bf_e[line]::-1}
+			((column--))
+			unset facename
+			[ -n "$bckfacename" ] && {
+				facename="$bckfacename"
+				unset bckfacename
+			}
+			return;;
+		
+		'<b>')
+			bckfacename="$facename"
+			skip_next_space=1
+			facename=title
+			return;;
+		'<i>')
+			bckfacename="$facename"
+			skip_next_space=1
+			facename=alt
+			return;;
+	
+		'<strong>')
+			bckfacename="$facename"
+			skip_next_space=1
+			facename=highlight
+			return;;
+	esac
+	
+	((sethighlight==2)) && {
+		sethighlight=1
+		skip_next_space=1
+		tmp_sex="$word"
+		return
+	}
+	((sethighlight==1)) && {
+		sethighlight=0
+		skip_next_space=1
+		bf_d[syntax-exec]="$tmp_sex"
+		bf_d[syntax]="syntax-$word"
+		return
+	}
+	[ "$word" = '<change-syntax>' ] && {
+		skip_next_space=1
+		sethighlight=2
+		return
+	}
+	[ "$word" = '<tab>' ] || [ "$word" = '<->' ] && {
+		skip_next_space=1
+		face-no-expand tab-face "${resources[tab]}"
+		for ((if=0; if< ${#resources[tab]}; if++)) {
+			bf_e[line]+='t'
+			((column++))
+		}
+		return
+	}
+	[ "$word" = '</indent>' ] && {
+		bf_t[indent_spaces]=
+		bf_t[indent_spaces_e]=
+		return
+	}
+	((bf_t[indent]==1)) && {
+		bf_t[indent]=0
+		skip_next_space=1
+		bf_t[indent_spaces]=
+		bf_t[indent_spaces_e]=
+		bf_t[indent_spaces_f]=tab
+		case "$word" in
+			'&tab')
+				bf_t[indent_spaces]="${resources[tab]}"
+				for ((if=0; if< ${#resources[tab]}; if++)) {
+					bf_t[indent_spaces_e]+='t'
+				}
+				return
+		esac
+		for ((if=0; if< word; if++)) {
+			bf_t[indent_spaces]+=' '
+			bf_t[indent_spaces_e]+='s'
+		}
+		return
+	}
+	[ "$word" = '<indent>' ] && {
+		bf_t[indent]=1
+		skip_next_space=1
+		return
+	}
+	((link==2)) && {
+		[ "$word" = ':' ] && {
+			((
+				skip_next_space=1,
+				link=1
+			))
+			return
+		}
+		skip_next_space=1
+		linkfn+="$word "
+		return
+	}
+	[ "$word" = '</a>' ] && {
+		((lc++))
+		((column--))
+		link=0
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		bf_c[line]+="bf_c_${lc}_${current_buffer} "
+		declare -Ag "bf_c_${lc}_${current_buffer}"
+		local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+		bf_c_line=(
+			[start]="$lsx"
+			[end]=$((column - 1))
+			[exec]="$linkfn"
+		)
+		return
+	}
+	[ "$word" = '<a>' ] && {
+		((
+			link=2,
+			lsx=column,
+			skip_next_space=1
+		))
+		linkfn=
+		return
+	}
+	((facelink==2)) && {
+		[ "$word" = ':' ] && {
+			((
+				skip_next_space=1,
+				facelink=1
+			))
+			facename='link'
+			return
+		}
+		skip_next_space=1
+		linkfn+="$word "
+		return
+	}
+	[ "$word" = '</link>' ] && {
+		((lc++))
+		((column--))
+		facelink=0
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		bf_c[line]+="bf_c_${lc}_${current_buffer} "
+		declare -Ag "bf_c_${lc}_${current_buffer}"
+		local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+		bf_c_line=(
+			[start]="$lsx"
+			[end]=$((column - 1))
+			[exec]="$linkfn"
+		)
+		unset facename
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	[ "$word" = '<link>' ] && {
+		((
+			facelink=2,
+			lsx=column,
+			skip_next_space=1
+		))
+		linkfn=
+		return
+	}
+	
+	((object==1)) && {
+		skip_next_space=1
+		[ "$word" = 'text:' ] && {
+			object=0
+			set_obj=0
+			return
+		}
+		case "$word" in
+			'select:') set_obj=1; obj_select=; return;;
+			'id:') set_obj=2; obj_id=; return;;
+			'left:') set_obj=3; obj_left=; return;;
+			'up:') set_obj=4; obj_up=; return;;
+			'right:') set_obj=5; obj_right=; return;;
+			'down:') set_obj=6; obj_down=; return;;
+		esac
+
+		((set_obj==1)) && obj_select+="$word "
+		((set_obj==2)) && obj_id+="$word "
+		((set_obj==3)) && obj_left+="$word "
+		((set_obj==4)) && obj_up+="$word "
+		((set_obj==5)) && obj_right+="$word "
+		((set_obj==6)) && obj_down+="$word "
+		return
+	}
+	case "$word" in
+		'</o>')
+			((lc++))
+			((column--))
+			link=0
+			unset linearray[-1]
+			bf_e[line]=${bf_e[line]::-1}
+			bf_c[line]+="bf_c_${lc}_${current_buffer} "
+			declare -Ag "bf_c_${lc}_${current_buffer}"
+			local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+			bf_c_line=(
+				[start]="$lsx"
+				[end]=$((column - 1))
+				[exec]="$obj_select"
+				[id]="$obj_id"
+				[left]="$obj_left"
+				[up]="$obj_up"
+				[right]="$obj_right"
+				[down]="$obj_down"
+			)
+			return;;
+		'<o>')
+			((
+				object=1,
+				lsx=column,
+				skip_next_space=1
+			))
+			obj_id=
+			obj_text=
+			obj_select='true'
+			obj_left='backward-char'
+			obj_up='previous-line'
+			obj_right='forward-char'
+			obj_down='next-line'
+			set_obj=0
+			return;;
+	esac
+			
+	
+	((bf_t[checkbox]==1)) && {
+		bf_t[checkbox]=0
+		local -n state="$word"
+		[ -z "$state" ] && {
+			state=0
+		}
+		local display=
+		bckfacename="$facename"
+		case "$state" in
+			'1')
+				facename=checkbox-enabled
+				display="${resources[checkbox-enabled]}";;
+			*)
+				facename=checkbox-disabled
+				display="${resources[checkbox-disabled]}"
+		esac
+		((lc++))
+		((column--))
+		bf_c[line]+="bf_c_${lc}_${current_buffer} "
+		declare -Ag "bf_c_${lc}_${current_buffer}"
+		local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+		bf_c_line=(
+			[start]=$((column))
+			[end]=$((column + ${#display}))
+			[exec]="toggle-checkbox $line $word"
+		)
+		word="${display}"
+	}
+	[ "$word" = '<ch>' ] && {
+		((
+			bf_t[checkbox]=1,
+			skip_next_space=1
+		))
+		return
+	}
+	[ "$word" = '</ch>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		((column--))
+		unset facename
+		upper=0
+		[ -n "$bckfacename" ] && {
+			facename="$bckfacename"
+			unset bckfacename
+		}
+		return
+	}
+	[ "$word" = '</lbt>' ] && {
+		((lc++))
+		((column--))
+		link=0
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		bf_c[line]+="bf_c_${lc}_${current_buffer} "
+		declare -Ag "bf_c_${lc}_${current_buffer}"
+		local -n bf_c_line="bf_c_${lc}_${current_buffer}"
+		bf_c_line=()
+
+		local -n ___sel=bf_t[lbt_${bf_t[lbt_id]}_obj_select]
+		local -n ___lef=bf_t[lbt_${bf_t[lbt_id]}_obj_left]
+		local -n ___upc=bf_t[lbt_${bf_t[lbt_id]}_obj_up]
+		local -n ___rig=bf_t[lbt_${bf_t[lbt_id]}_obj_right]
+		local -n ___dow=bf_t[lbt_${bf_t[lbt_id]}_obj_down]
+		bf_c_line+=(
+			[start]="$((lsx - 1))"
+			[end]=$((column + ${bf_t[lbt_${bf_t[lbt_id]}_w]} -1))
+			[exec]="${___sel}"
+			[id]="${bf_t[lbt_id]} " #important, space for object compatiblity TODO: make make sense
+			[left]="${___lef}"
+			[up]="${___upc}"
+			[right]="${___rig}"
+			[down]="${___dow}"
+		)
+		bf_c_line[beg-x]=$(((column +  ${bf_t[lbt_${bf_t[lbt_id]}_w]}/2) - (${#bf_t[lbt_${bf_t[lbt_id]}_text]}/2) ))
+		
+		case "${bf_t[lbt_${bf_t[lbt_id]}_la]}" in
+			'2')
+				bf_t[lbt]=0
+				bf_t[lbt_"${bf_t[lbt_id]}"_la]="3"
+
+				bf_c_line[beg-y]=$((line))
+				if (( ${bf_t[lbt_${bf_t[lbt_id]}_w]} % 2 == 0)); then
+					printf -v bf_t[mkl] '%*s' $((
+												   (${bf_t[lbt_${bf_t[lbt_id]}_w]}/2)
+												   +
+												   (${#bf_t[lbt_${bf_t[lbt_id]}_text]}/2)
+												   -1
+											   )) "${bf_t[lbt_${bf_t[lbt_id]}_text]}"
+					printf -v bf_t[mkl2] '%*s' $((
+													(${bf_t[lbt_${bf_t[lbt_id]}_w]}/2)
+													-
+													(${#bf_t[lbt_${bf_t[lbt_id]}_text]}/2)
+													-1
+												)) ''
+				else
+					printf -v bf_t[mkl] '%*s' $((
+												   (${bf_t[lbt_${bf_t[lbt_id]}_w]}/2)
+												   +
+												   (${#bf_t[lbt_${bf_t[lbt_id]}_text]}/2)
+												   
+											   )) "${bf_t[lbt_${bf_t[lbt_id]}_text]}"
+					printf -v bf_t[mkl2] '%*s' $((
+													(${bf_t[lbt_${bf_t[lbt_id]}_w]}/2)
+													-
+													(${#bf_t[lbt_${bf_t[lbt_id]}_text]}/2)
+													-1
+												)) ''
+				fi
+				word="${resources[bold-column]}${bf_t[mkl]}${bf_t[mkl2]}${resources[bold-column]}"
+				;;
+			'3')
+				bf_c_line[beg-y]=$((line-1))
+				bf_t[lbt]=0
+				bf_t[lbt_"${bf_t[lbt_id]}"_la]="0"
+				printf -v bf_t[mkl] '%*s' $((${bf_t[lbt_${bf_t[lbt_id]}_w]}-2)) ''
+				word="${resources[bold-angle-up-right]}${bf_t[mkl]// /${resources[bold-line]}}${resources[bold-angle-up-left]}"
+				;;
+			*)
+				bf_c_line[beg-y]=$((line+1))
+				bf_t[lbt]=0
+				bf_t[lbt_"${bf_t[lbt_id]}"_la]="2"
+				printf -v bf_t[mkl] '%*s' $((${bf_t[lbt_${bf_t[lbt_id]}_w]}-2)) ''
+				word="${resources[bold-angle-down-right]}${bf_t[mkl]// /${resources[bold-line]}}${resources[bold-angle-down-left]}"
+				;;
+		esac
+	}
+	
+	((bf_t[lbt]==1)) && {
+		skip_next_space=1
+		[ -z "$word" ] && return
+		case "${word}" in
+			'id:') bf_t[lbt_t]=1; return;;
+			'width:') bf_t[lbt_t]=2; return;;
+			'text:') bf_t[lbt_t]=3; return;;
+			
+			'select:') bf_t[lbt_t]=4; return;;
+			'left:') bf_t[lbt_t]=5; return;;
+			'up:') bf_t[lbt_t]=6; return;;
+			'right:') bf_t[lbt_t]=7; return;;
+			'down:') bf_t[lbt_t]=8; return;;
+		esac
+		
+		((bf_t[lbt_t]==1)) && {
+			bf_t[lbt_id]="${word}"
+		}
+		((bf_t[lbt_t]==2)) && {
+			bf_t[lbt_"${bf_t[lbt_id]}"_w]="${word}"
+		}
+		((bf_t[lbt_t]==3)) && {
+			bf_t[lbt_"${bf_t[lbt_id]}"_text]="${word}"
+			[ -z "${bf_t[lbt_${bf_t[lbt_id]}_w]}" ] && bf_t[lbt_"${bf_t[lbt_id]}"_w]=$((${#word}+8))
+		}
+		((bf_t[lbt_t]==4)) && { bf_t[lbt_"${bf_t[lbt_id]}"_obj_select]+="$word "; }
+		((bf_t[lbt_t]==5)) && { bf_t[lbt_"${bf_t[lbt_id]}"_obj_left]+="$word "; }
+		((bf_t[lbt_t]==6)) && { bf_t[lbt_"${bf_t[lbt_id]}"_obj_up]+="$word "; }
+		((bf_t[lbt_t]==7)) && { bf_t[lbt_"${bf_t[lbt_id]}"_obj_right]+="$word "; }
+		((bf_t[lbt_t]==8)) && { bf_t[lbt_"${bf_t[lbt_id]}"_obj_down]+="$word ";  }
+#		declare -p main_bf_t > d
+		return
+	}
+	[ "$word" = '<lbt>' ] && {
+		((
+			bf_t[lbt]=1,
+			lsx=column,
+			skip_next_space=1
+		))
+		return
+	}
+	
+	[ "$word" = '<lp>' ] && {
+		s+=('')
+		pad=3
+		skip_next_space=1
+		return
+	}
+	((pad==3)) && {
+		case "$word" in
+			'&s'|'&space'|'<s>') padchar=' ';;
+			'&'*) padchar="${resources[${word:1}]}";;
+			*) padchar="$word"
+		esac
+		pad=2
+		skip_next_space=1
+		return
+	}
+	((pad==2)) && {
+		expression="$word"
+		pad=1
+		return
+	}
+	[ "$word" = '</lp>' ] && {
+		unset linearray[-1]
+		bf_e[line]=${bf_e[line]::-1}
+		local -i x="${bf_d[size-x]}"
+		padnum=$(($expression))
+		for ((; padnum>0; padnum--)); do
+			face-no-expand "${facename:-${bf_d[background]:-default}}" "$padchar"
+			bf_e[line]+='s'
+		done						
+		pad=0
+		local wordspace=' '
+		for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+			((pli+2==${#padlist[@]})) && {
+				wordspace=''
+			}	
+			face "${padlist[pli]}" "${padlist[pli+1]}${wordspace}"
+		done
+		padlist=()
+		return
+	}
+
+	case "$word" in	
+		'<h1>'|'<h2>'|'<subh1>'|'<hhr>')
+			s+=('')
+			pad=1
+			skip_next_space=1
+			return;;
+		'</hhr>')
+			face-no-expand divider "${resources[line]}"
+			face-no-expand divider "${resources[bracket-open]}"
+			bf_e[line]+='ss'
+			pad=0
+			local wordspace=' '
+			for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+				((pli+2==${#padlist[@]})) && {
+					wordspace=''
+				}	
+				face title "${padlist[pli+1]^^}${wordspace}"
+			done
+			face-no-expand divider "${resources[bracket-close]}"
+			bf_e[line]+='s'
+			for ((padnum= bf_d[size-x] - s[-1] -2; padnum>0; padnum--)); do
+				face-no-expand divider "${resources[line]}"
+				bf_e[line]+='s'
+			done
+			padlist=()
+			return;;
+
+		'</subh1>')
+			for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+				face-no-expand "${facename:-${bf_d[background]:-default}}" " "
+				bf_e[line]+='s'
+			done						
+			pad=0
+			local wordspace=' '
+			for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+				((pli+2==${#padlist[@]})) && {
+					wordspace=''
+				}	
+				face "${facename:-unknown}" "${padlist[pli+1]}${wordspace}"
+			done
+			padlist=()
+			return;;
+		'</h1>')
+			for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+				face-no-expand divider "${resources[line]}"
+				bf_e[line]+='s'
+			done						
+			pad=0
+			local wordspace=' '
+			for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+				((pli+2==${#padlist[@]})) && {
+					wordspace=''
+				}	
+				face title "${padlist[pli+1]^^}${wordspace}"
+			done
+			for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+				face-no-expand divider "${resources[line]}"
+				bf_e[line]+='s'
+			done
+			padlist=()
+			return;;
+		'</h2>')
+			for ((padnum= bf_d[size-x] / 2 - s[-1] / 2; padnum>0; padnum--)); do
+				face-no-expand "${facename:-${bf_d[background]:-default}}" " "
+				bf_e[line]+='s'
+			done						
+			pad=0
+			local wordspace=' '
+			for ((pli=0; pli<${#padlist[@]}; pli+=2)); do
+				((pli+2==${#padlist[@]})) && {
+					wordspace=''
+				}	
+				face title "${padlist[pli+1]^^}${wordspace}"
+			done
+			padlist=()
+			return;;
+		'<>')
+			unset linearray[-1]
+			bf_e[line]=${bf_e[line]::-1}
+			skip_next_space=1
+			return;;
+		'<hr>')
+			for ((x=bf_d[size-x]; x>0; x--)); do
+				face-no-expand "${facename:-divider}" "${resources[line]}"
+				bf_e[line]+='s'
+			done
+			skip_next_space=1
+			return;;
+	esac
+	
+	((space_next==1)) && {
+		space_next=0
+		skip_next_space=1
+		for ((if=0; if< word; if++)) {
+			linearray+=(' ')
+			bf_e[line]+='s'
+			((column++))
+		}
+		return
+	}
+	case "$word" in
+		'<s>')
+			space_next=1
+			skip_next_space=1
+			return;;
+		'<ol>')
+			listcount=1
+			orderlist=1
+			skip_next_space=1
+			return;;
+		'</ol>')
+			listcount=0
+			orderlist=0
+			skip_next_space=1
+			return;;
+		'<li>')
+			((orderlist==1)) && {
+				word="${listcount}${resources[item-number]}"
+				((listcount++))
+			} || word="${resources[item]}"
+	esac
+	
+	[ "${word:0:1}" = '&' ] && {
+		[ "${word}" = '&' ] && word='&' || word="${resources[${word:1}]}"
+	}
+	
+	((newline==1)) && newline=0
+	((column+=${#bf_t[ichar]} + ${#word}))
+	((upper==1)) && {
+		word="${word^^}"
+	}
+	((pad==1)) && {
+		padlist+=(
+			"${facename:-unknown}" "${bf_t[ichar]}$word"
+		)
+		s[-1]=$((s[-1] + ${#word} + 1))
+		skip_next_space=1
+		return
+	}
+	[ -n "${bf_t[ichar]}" ] &&
+		face-no-expand "${bf_t[indent_spaces_f]:-tab}" "${bf_t[ichar]}"
+	bf_e[line]+="${bf_t[iexp]}"
+	face "${facename:-unknown}" "$word"
+}
+
+function link-enter {
+	for link in ${bf_c[bf_d[line]]}; {
+		local -n bf_c_line="$link"		
+		((bf_d[column] >= bf_c_line[start])) &&
+			((bf_d[column] <= bf_c_line[end])) && {
+				has=1
+				${bf_c_line[exec]}
+				return
+			}
+	}
+	${bf_d[format-else]}
+}
+
+function format-left {
+	for link in ${bf_c[bf_d[line]]}; {
+		local -n bf_c_line="$link"
+		((bf_d[column] >= bf_c_line[start])) &&
+			((bf_d[column] <= bf_c_line[end])) && {
+				${bf_c_line[left]:-backward-char}
+				return
+			}
+	}
+	backward-char
+}
+function format-up {
+	for link in ${bf_c[bf_d[line]]}; {
+		local -n bf_c_line="$link"
+		((bf_d[column] >= bf_c_line[start])) &&
+			((bf_d[column] <= bf_c_line[end])) && {
+				${bf_c_line[up]:-previous-line}
+				return
+			}
+	}
+	previous-line
+}
+function format-right {
+	for link in ${bf_c[bf_d[line]]}; {
+		local -n bf_c_line="$link"
+		((bf_d[column] >= bf_c_line[start])) &&
+			((bf_d[column] <= bf_c_line[end])) && {
+				${bf_c_line[right]:-forward-char}
+				return
+			}
+	}
+	forward-char
+}
+function format-down {
+	for link in ${bf_c[bf_d[line]]}; {
+		local -n bf_c_line="$link"
+		((bf_d[column] >= bf_c_line[start])) &&
+			((bf_d[column] <= bf_c_line[end])) && {
+				${bf_c_line[down]:-next-line}
+				return
+			}
+	}
+	next-line
+}
+
+function obj {
+	for y in "${!bf_c[@]}"; {
+		for obj in ${bf_c[y]}; {
+			local -n bf_c_line="$obj"
+			[ "${bf_c_line[id]}" = "$1 " ] && {
+				bf_d[line]="${bf_c_line[beg-y]:-${y}}"
+				bf_d[column]="${bf_c_line[beg-x]:-${bf_c_line[start]}}"
+				redraw.cursor
+				return
+			}
+		}
+	}
+}
+
+function toggle-checkbox {
+	local -n var="$2"
+	case "$var" in
+		0) var=1;;
+		*) var=0
+	esac
+	make-render-line "$1"
+	redraw
+}

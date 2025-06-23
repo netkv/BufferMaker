@@ -1,0 +1,31 @@
+#!/bin/bash
+source buffermaker
+
+
+declare-buffer test
+bf_d+=(
+	[mode]=basic
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+
+load-default-config
+init-var
+buffer=(
+	''
+	'<link> file-picker . pick.finish : WHAT </link>'
+	'<f> hint Hello World </f>'
+	'<f> red A <v> outvalue A </f>'
+)
+
+function pick.finish {
+	outvalue="$1"
+	set-buffer test
+	clear-render
+	redraw
+}
+
+set-buffer test
+redraw
+input-loop

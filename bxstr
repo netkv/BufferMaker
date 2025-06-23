@@ -1,0 +1,77 @@
+#!/bin/bash
+## bxstrudel
+function string:lenght {
+	local input="$1"
+	local total_width=0
+	local char
+
+	while IFS= read -rn1 char; do
+		test -z "$char" && break 
+		local cdp=$(printf '%d' "'${char}")
+		((total_width += 1))
+		# Check for double-width characters using Unicode ranges
+		((
+			(cdp >= 0x1100 && cdp <= 0x115F) ||
+				(cdp >= 0x2E80 && cdp <= 0xA4CF) ||
+				(cdp >= 0xAC00 && cdp <= 0xD7A3) ||
+				(cdp >= 0xF900 && cdp <= 0xFAFF) ||
+				(cdp >= 0xFE10 && cdp <= 0xFE6F) ||
+				(cdp >= 0xFF00 && cdp <= 0xFF60) ||
+				(cdp >= 0xFFE0 && cdp <= 0xFFE6) ||
+				(cdp >= 0x1F300 && cdp <= 0x1F64F) ||
+				(cdp >= 0x1F900 && cdp <= 0x1F9FF) ||
+				(cdp >= 0x20000 && cdp <= 0x2FFFD) ||
+				(cdp >= 0x30000 && cdp <= 0x3FFFD)
+		)) &&
+			((total_width += 1))
+	done <<< "$input"
+
+	echo "$total_width"
+}
+function string:sub {
+	local input="$3"
+    local start="$1"
+    local end="$2"
+    local width=0
+    local char
+    local output=""
+
+    while IFS= read -rn1 char; do
+        [[ -z "$char" ]] && break  # Stop processing when reaching the end
+
+        # Get the Unicode codepoint of the character
+        local ord=$(printf '%d' "'${char}")
+        local char_width=1
+
+        # Check for double-width characters
+        if (( \
+              (ord >= 0x1100 && ord <= 0x115F) || \
+				  (ord >= 0x2E80 && ord <= 0xA4CF) || \
+				  (ord >= 0xAC00 && ord <= 0xD7A3) || \
+				  (ord >= 0xF900 && ord <= 0xFAFF) || \
+				  (ord >= 0xFE10 && ord <= 0xFE6F) || \
+				  (ord >= 0xFF00 && ord <= 0xFF60) || \
+				  (ord >= 0xFFE0 && ord <= 0xFFE6) || \
+				  (ord >= 0x1F300 && ord <= 0x1F64F) || \
+				  (ord >= 0x1F900 && ord <= 0x1F9FF) || \
+				  (ord >= 0x20000 && ord <= 0x2FFFD) || \
+				  (ord >= 0x30000 && ord <= 0x3FFFD) \
+           )); then
+            char_width=2
+        fi
+
+        if (( width + char_width > end )); then
+            break
+        fi
+        
+        if (( width >= start )); then
+            output+="$char"
+        fi
+        
+        (( width += char_width ))
+    done <<< "$input"
+
+    echo "$output"
+}
+
+[[ "${BASH_SOURCE[0]}" = "${0}" ]] && string:sub "$@"

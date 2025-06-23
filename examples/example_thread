@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# enter level
+coproc {
+	sleep 1
+	echo whatever
+}
+while IFS='' read -r; do word="$REPLY"; done <& "${COPROC[0]}"
+echo hi
+sleep 1
+echo $word

@@ -1,0 +1,161 @@
+#!/bin/bash
+IFS=''
+source bxcommon
+declare -a out
+
+function transform {
+	local -n source="$1"
+	for idx in "${!source[@]}"; {
+		printf '%s' "${source[idx]}"
+	}
+}
+function split {
+	local -n source="$1"
+	local -n odd="$2"
+	local -n even="$3"
+	odd=()
+	even=()
+	_c=1
+	for idx in "${!source[@]}"; {
+		((_c==1)) && {
+			odd+=("${source[${idx}]}")
+			_c=2
+			continue
+		}
+		((_c==2)) && {
+			even+=("${source[${idx}]}")
+			_c=1
+			continue
+		}
+	}
+}
+
+shopt -s lastpipe
+function parse {
+	mapfile -t -d '' input
+	transform input | mapfile -t -d '"' literal
+	split literal step0 __ins
+
+	{ transform step0; echo; }| while
+		read -r -d $'\n' item; do
+		step1+="$item "; done
+	
+	echo "${step1}"$'\t' | while
+		read -r -d $'\t' item; do
+		step2+="$item "; done
+	
+	echo "${step2}"' ' | while
+		read -r -d ' ' item; do
+		[ "$item" = '' ] && continue
+		step3+="$item "
+	done
+	
+	transform step3 | mapfile -t -d ' ' __inc
+	
+	# this section expects two arrays
+	# array of control sequences
+	# literal string values in order
+	local -i __depth=0
+	local -i __attr=0
+	local -i __attrc=0
+	local __str=''
+	local -i __seq=0
+	declare -g __name="${1}"
+	declare -ag __farr=("${__name}")
+
+	function focus.apply {
+		declare -gn __focus="${__farr[-1]}"
+	}
+	function focus.return {
+		unset '__farr[-1]'
+		focus.apply
+	}
+	function focus.tag {
+		((__seq++))
+		__farr+=("${__name}_t_${__seq}_${#__focus[@]}__${1}")
+		__focus+=("${__name}_t_${__seq}_${#__focus[@]}__${1}")
+		focus.apply
+	}
+	function focus.value {
+		((__seq++))
+		__focus+=("${__name}_d_${__seq}_${#__focus[@]} ${1}")
+	}
+	function focus.attr {
+		((__seq++))
+		__farr+=("${__name}_a_${__seq}_${#__focus[@]}__${1}")
+		__focus+=("${__name}_a_${__seq}_${#__focus[@]}__${1}")
+		focus.apply
+		__focus+=("${__name}_da_${__seq}_${#__focus[@]} ${2}")
+		unset '__farr[-1]'
+		focus.apply
+	}
+	
+	focus.apply
+	
+	for __key in "${__inc[@]}"; do
+		((__attr==1)) && {
+			case "${__key}" in
+				'>'*)
+					__attr=0
+					continue
+					;;
+			esac
+			# printf '%*sattribute: %s ->\n' $((__depth*2)) '' "${__key::-1}"
+			# printf '%*s"%s"\n' $((__depth*2+2)) '' "${__ins[__attrc]}"
+			focus.attr "${__key::-1}" "${__ins[__attrc]}"
+			((__attrc++))
+			continue
+		}
+		case "${__key}" in
+			'</'*'>')
+				# [ -n "${__str}" ] && printf '%*s%s\n' $((__depth*2)) '' "${__str::-1}"
+				[ -n "${__str}" ] && focus.value "${__str::-1}"
+				__str=''
+				((__depth--))
+				# printf '%*stag close: "%s"\n' $((__depth*2)) '' "${__key:2:-1}"
+				focus.return
+				;;
+			'<'*'>')
+				# printf '%*stag open: "%s" :\n' $((__depth*2)) '' "${__key:1:-1}"
+				focus.tag "${__key:1:-1}"
+				((__depth++))
+				;;
+			'<'*)
+				# printf '%*stag open attributes: "%s" :\n' $((__depth*2)) '' "${__key:1}"
+				focus.tag "${__key:1}"
+				((__depth++))
+				__attr=1
+				;;
+			*)
+				__str+="${__key} "
+		esac
+	done
+}
+
+function debug-tree {
+	[ -n "$2" ] && {
+		declare -ig ____dc="$1"
+		____name="$2"
+		shift
+	}
+	local -n source="$1"
+	for idx in "${!source[@]}"; {
+		printf '%*s\e[1;32m%s\e[m………\e[1;35m%s\e[m\n' $((____dc*4)) '' "${1}" "${source[idx]}"
+		((____dc++))
+		if [   "${source[idx]:0:$((${#____name}+2))}" = "${____name}_t" ]; then
+			debug-tree "${source[idx]}"
+		elif [ "${source[idx]:0:$((${#____name}+2))}" = "${____name}_a" ]; then
+			debug-tree "${source[idx]}"
+		fi
+		((____dc--))
+	}
+}
+
+parse ThevaR < "$1"
+
+debug-tree 0 ThevaR
+
+
+#root
+#
+#declare -p

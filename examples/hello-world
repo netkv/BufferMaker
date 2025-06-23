@@ -1,0 +1,21 @@
+#!/bin/bash
+source buffermaker
+
+
+declare-buffer test
+bf_d+=(
+	[mode]=basic
+	[syntax]=syntax-format
+	[syntax-exec]=1
+	[render-type]=per-char
+)
+
+buffer=(
+	''
+	'<f> hint Hello World </f>'
+)
+
+load-default-config
+init-var
+redraw
+input-loop

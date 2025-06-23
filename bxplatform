@@ -1,0 +1,306 @@
+#!/bin/bash
+bxplatform_version='p0r2'
+### INCLUDED BUFFERS
+
+function about {
+	declare-buffer about
+	bf_d+=(
+		[mode]=basic
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+	)
+	declare -F | mapfile -t -d $'\n' functions
+	declare -f | mapfile -t -d $'\n' code
+	fnc="${#functions[@]}"
+	codec="${#code[@]}"
+	buffer=(
+		''
+		'<h1> About Buffermaker </h1>'
+		'<subh1> BashboX Text Buffer Maker  </subh1>'
+		'<f> green Buffer </f> <> <f> cyan Maker </f> <f> magenta is general purpose text user interface toolkit'
+		'written in <f> blue pure bash </f> <> . Welcome to its about buffer. </f>'
+		'<f> yellow'
+		'+------------+ LOGO TO BE CHANGED'
+		'|_B   \   \   \ THIS IS TEMPORARY PLACEHOLDER'
+		'|___u  \   \   \ IT WON'"'"'T BE THIS BAD'
+		'|_____f  \  \   \ ATLEAST I HOPE SO'
+		'|_______f \   \  \ WELP'
+		'|_________e \  \  \'
+		'+___________r\Maker\ </f>'
+		''
+		'<hhr> Actions </hhr>'
+		'<-> <f> white <lbt> id: quit select: die text: Exit </lbt> </f>'
+		'<-> <lbt> id: quit </lbt>'
+		'<-> <f> gray <lbt> id: quit </lbt> </f>'
+		
+#		'<o> id: quit select: die text: <f> button quit </f> </o>'
+		'<hhr> Debug info </hhr>'
+		'Buffermaker version: <f> hint <v> buffermaker_version </f>'
+		'BXcommon version: <f> hint <v> bxcommon_version </f>'
+		'BXinput version: <f> hint <v> bxinput_version </f>'
+		'BXrender version: <f> hint <v> bxrender_version </f>'
+#		'BXbuffer version: <f> hint <v> bxbuffer_version </f>'
+		'BXformat version: <f> hint <v> bxformat_version </f>'
+		'BXplatform version: <f> hint <v> bxplatform_version </f>'
+#		'BXlegacy version: <f> hint <v> bxlegacy_version </f> <> , Supporting:'
+#		'<s> 2 <f> hint C </f> <> urrent <> <f> dim / </f> <> <f> hint E </f> <> xplicit <> <f> dim / </f> <> <f> hint I </f> <> mplicit'
+	)
+#	for _bxpl__v in "${bxlegacy_support[@]}"; do
+#		buffer+=('<-> <li> '"${_bxpl__v}")
+#	done
+	buffer+=(
+#		'<s> 2 <f> red All legacy support is experimental and should not be depended upon! </f>'
+		'functions: <f> hint <v> fnc </f>'
+		'lines of code: <f> hint <v> codec </f>'
+		'Bash version: <f> hint <v> BASH_VERSION </f>'
+		'Terminal: <f> hint <v> TERM </f>'
+		'Terminal size: <f> hint <v> COLUMNS </f> <> x <> <f> hint <v> LINES </f>'
+		'Terminal color type: <f> hint <v> COLORTERM </f>'
+		'Colors: <[> black ▓▓▓ <> <[> red ▓▓▓ <> <[> green ▓▓▓ <> <[> yellow ▓▓▓ <> <[> blue ▓▓▓ <> <[> magenta ▓▓▓ <> <[> cyan ▓▓▓ <> <[> light-gray ▓▓▓ <[> default'
+		'        <[> gray ▓▓▓ <> <[> light-red ▓▓▓ <> <[> light-green ▓▓▓ <> <[> light-yellow ▓▓▓ <> <[> light-blue ▓▓▓ <> <[> light-magenta ▓▓▓ <> <[> light-cyan ▓▓▓ <> <[> white ▓▓▓ <[> default'
+		''
+		'<hhr> Legalities </hhr>'
+		'&copy <f> highlight Netkv </f> 2022-2025'
+		'Repo: <f> link https://github.com/netkv/BufferMaker </f>' 
+		''
+		'<h3> Licence </h3> <f> yellow (BSD-0) </f> <indent> &tab'
+		'<f> light-magenta Permission to use, copy, modify, and/or distribute this software for any purpose'
+		'with or without fee is hereby granted. </f>'
+		''
+		'<f> light-blue THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD'
+		'TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.'
+		'IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT,'
+		'OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA'
+		'OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,'
+		'ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. </indent> </f>'
+		''
+		'<hhr> Declared functions </hhr>'
+	)
+	##TODO: make overformat
+	if ((COLUMNS<80)); then
+		for ((idc=0;idc<"${#functions[@]}" ; idc+=1)); do
+			buffer+=("${functions[idc]:11}")
+		done
+	elif ((COLUMNS<120)); then
+		 for ((idc=0;idc<"${#functions[@]}" ; idc+=2)); do
+			 buffer+=("<lp> &space 0 ${functions[idc]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+1]:11}  </lp>")
+		 done
+	elif ((COLUMNS<160)); then
+		 for ((idc=0;idc<"${#functions[@]}" ; idc+=3)); do
+			 buffer+=("<lp> &space 0 ${functions[idc]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+1]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+2]:11}  </lp>")
+		 done
+	elif ((COLUMNS<200)); then
+		 for ((idc=0;idc<"${#functions[@]}" ; idc+=4)); do
+			 buffer+=("<lp> &space 0 ${functions[idc]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+1]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+2]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+3]:11}  </lp>")
+		 done
+	elif ((COLUMNS<240)); then
+		for ((idc=0;idc<"${#functions[@]}" ; idc+=5)); do
+			buffer+=("<lp> &space 0 ${functions[idc]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+1]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+2]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+3]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+4]:11}  </lp>")
+		done
+	else
+		for ((idc=0;idc<"${#functions[@]}" ; idc+=6)); do
+			buffer+=("<lp> &space 0 ${functions[idc]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+1]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+2]:11} </lp> <lp> &space 40-s[-2] ${functions[idc+3]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+4]:11}  </lp> <lp> &space 40-s[-2] ${functions[idc+5]:11} </lp>")
+		done
+
+	fi
+	redraw
+	obj quit
+	input-loop
+}
+
+function box.shadow {
+	bf_d+=(
+		[size-y]=${size_y}
+		[loc-y]=${loc_y}
+		[size-x]=${size_x}
+		[loc-x]=${loc_x}
+	)
+
+	declare-buffer msgbox_background
+	bf_d+=(
+		[mode]=none
+		[syntax]=syntax-none
+		[syntax-exec]=0
+		[render-type]=per-line
+		[background]=border-highlight
+
+		[size-y]=$((size_y + 2))
+		[loc-y]=$((loc_y - 1))
+		[size-x]=$((size_x + 2))
+		[loc-x]=$((loc_x - 1))
+	)
+	redraw
+
+	declare-buffer msgbox_shadow
+	bf_d+=(
+		[mode]=none
+		[syntax]=syntax-none
+		[syntax-exec]=0
+		[render-type]=per-line
+		[background]=border-shadow
+
+		[size-y]=$((size_y + 1))
+		[loc-y]=$((loc_y))
+		[size-x]=$((size_x + 1))
+		[loc-x]=$((loc_x))
+	)
+	redraw
+}
+
+## msgbox
+# ${1} is the name of the buffer of msgbox
+# the ${<value of ${1}>_title} is title of msgbox 
+function msgbox {
+	local return_to="${current_buffer}"
+	local -n message="${1}"
+	local -n message_title="${1}_title"
+	declare-buffer msgbox
+	bf_d+=(
+		[mode]=basic
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+		[return-to]="${return_to}"
+	)
+	buffer=(
+		''
+		''
+		"<h2> ${message_title} </h2>"
+		''
+	)
+	append-array message buffer
+	buffer+=(
+		''
+		'<s> 14 <f> hint <Enter> </f> <o> id: ok select: box.close right: : left: : up: : down: : text: <f> button  Ok  </f> </o>'
+	)
+	
+	local size_y=$((${#buffer[@]}))
+	local loc_y=$((LINES / 2 - ( ${#buffer[@]} - 1 ) / 2 ))
+	local size_x=40
+	local loc_x=$((COLUMNS / 2 - 20))
+
+	box.shadow
+	
+	set-buffer msgbox
+	redraw
+	obj ok
+}
+
+function dialogbox {
+	local return_to="${current_buffer}"
+	local -n message="${1}"
+	local -n message_title="${1}_title"
+	declare-buffer dialogbox
+	bf_d+=(
+		[mode]=basic
+		[syntax]=syntax-format
+		[syntax-exec]=1
+		[render-type]=per-char
+		[return-to]="${return_to}"
+	)
+	buffer=(
+		''
+		''
+		"<h2> ${message_title} </h2>"
+		''
+	)
+	append-array message buffer
+	buffer+=('')
+	ext buffer
+	, '<s> 2'
+	, "<o> id: yes select: ${1}.yes right: obj no left: : up: : down: : text: <f> button  Yes  </f> </o>"
+	, "<o> id: no select: ${1}.no right: : left: obj yes up: : down: : text: <f> button  No  </f> </o>"
+	
+	local size_y=$((${#buffer[@]}))
+	local loc_y=$((LINES / 2 - ( ${#buffer[@]} - 1 ) / 2 ))
+	local size_x=40
+	local loc_x=$((COLUMNS / 2 - 20))
+		
+	bf_d+=(
+		[size-y]=${size_y}
+		[loc-y]=${loc_y}
+		[size-x]=${size_x}
+		[loc-x]=${loc_x}
+	)
+
+	box.shadow
+	
+	set-buffer dialogbox
+	redraw
+	obj no
+}
+
+function box.close {
+	set-buffer "${bf_d[return-to]}"
+	redraw
+}
+
+####################################################################################################
+# filepicker, usage: file-picker <dir> <function to be ran on its finish>
+# with $1 of that function  being the picked file
+function syntax:dired {
+	set-face default
+	[ -x "$word" ] && set-face exec
+	[ -d "$word" ] && set-face dir
+	[ -L "$word" ] && set-face symlink
+	[ -c "$word" ] && set-face char
+	[ -S "$word" ] && set-face socket
+	case "$word" in
+		*'.png'|*'.jpg') set-face image;;
+		*'.mp4'|*'.avi'|*.'mkv'|*'.m4v') set-face video;;
+		*'.mp3'|*'.ogg'|*.'wav') set-face audio;;
+		*'.zip'|*'.tar'|*'.rar') set-face archive;;
+		*'.txt'|*'.md') set-face text;;
+	esac
+}
+
+function dired:load-mode {
+	add-mode _bx_int__dired_mode
+	define-key _bx_int__dired_mode RET dired:select
+	define-key _bx_int__dired_mode "$(kbd h)" dired:toggle-hidden
+	define-key _bx_int__dired_mode C-c die
+	define-key _bx_int__dired_mode '[up]' previous-line
+	define-key _bx_int__dired_mode '[down]' next-line
+	mode-options
+	:: else :
+	load-theme filetype_faces
+}
+
+function dired:toggle-hidden {
+	((options[display-dotfiles]==0)) && options[display-dotfiles]=1 || options[display-dotfiles]=0
+	dired:load-dir
+	redraw
+}
+
+function dired:select {
+	[ -d "${buffer[bf_d[line]]}" ] && {
+		cd "${buffer[bf_d[line]]}"; dired:load-dir; redraw; return
+	}
+	"${_bx_int__return}" "${buffer[bf_d[line]]}"
+}
+function dired:load-dir {
+	buffer=()
+	bf_d+=([line]=1 [base]=1)
+	mapfile -t -O 1 buffer <<< "$(list-directory)"
+	clear-render
+	clear-screen
+}
+
+function file-picker {
+	local return_to="${current_buffer}"
+	declare -g _bx_int__return="${2}"
+	declare-buffer __bx_int__dired
+	bf_d+=(
+		[mode]=_bx_int__dired_mode
+		[syntax]=syntax:dired
+		[syntax-exec]=0
+		[render-type]=per-line
+		[line]=1
+		[column]=0
+		[return-to]="${return_to}"
+	)
+	dired:load-dir "${1}"
+	redraw
+}
+####################################################################################################

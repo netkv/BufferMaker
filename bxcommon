@@ -1,7 +1,104 @@
 #!/bin/bash
-bxcommon_version="2025-01-05"
+bxcommon_version="0.2.2 I,II,"
 ### collection of useful bash functions
 ### part of bashbox/buffermaker BashOS project
+function deprecated:replace { eval "function ${1} { warn \"${1} is deprecated, use ${2}\"; ${2}; }"; }
+
+function is:command { command -v "$1" >/dev/null 2>&1; }
+deprecated:replace has-command is:command
+function is:dir { test -d "${1}"; }
+function is:file { test -f "${1}"; }
+function is:empty { test -z "${1}"; }
+function is:function { declare -F "${1}" > /dev/null; }
+function isnot:empty { test -n "${1}"; }
+function ifnot:mkdir { is:dir "${1}" || mkdir "${1}"; }
+function ifnot:touch { is:file "${1}" || touch "${1}"; }
+
+function async-loop {
+	is:command async-loop:block || error 'async-loop:block() not defined'
+	for __async_arg in "${@}"; {
+		async-loop:block "${__async_arg}" &
+	}
+	unset async-loop:block
+}
+
+function loop {
+	is:command loop:block || error 'loop:block() not defined'
+	__times="${1}"
+	shift
+	for ((i=0;i<=__times - 1;i++)); {
+		loop:block "${@}" 
+	}
+
+	unset loop:block
+}
+
+function mk:case {
+	declare  _c__name="$1"
+	declare -a "${_c__name}"
+	declare -n _c__target="${_c__name}"
+	declare -i _c__i=0
+	function + {
+		_c__target+=("${1::-1}")
+		declare -a "${_c__name}${1::-1}"
+		declare -n _c__sub="${_c__name}${1::-1}"
+		shift
+		for _c__it in "$@"; do
+			_c__sub+=("${_c__it}")
+		done
+		((_c__i++))
+	}
+	function }, {
+		unset mk:case
+		unset +
+		unset },
+	}
+}
+
+
+function need:command { is:command "$1" || error "command ${1} not found"; }
+function need:function { declare -F "${1}" > /dev/null || error "function ${1} not defined"; }
+deprecated:replace need-command need:command
+function neednot:empty { [ -z "${1}" ] && error "variable ${1} is empty"; }
+deprecated:replace need-not-empty neednot:empty
+deprecated:replace need-not-empty-value neednot:empty
+
+function need {
+	#exit if var doesnt match expectation
+	local -n source="$1"
+	local target="$2"
+	[ "${source}" = "${target}" ] || error "variable ${1} isn't expected ${2}"
+}
+function need-value {
+	#exit if var doesnt match expectation
+	local source="$1"
+	local target="$2"
+	[ "${source}" = "${target}" ] || error "variable ${1} doesn't have expected value ${2}"
+}
+function need-array-item {
+	#exit if var doesnt match expectation
+	local -n source="$1" 
+	local target="$2"
+	local _has=no
+	for idx in "${!source[@]}"; {
+		[ "${source[idx]}" = "${target}" ] && _has=yes && return
+	}
+	error "array ${1} doesn't have expected item with value ${2}"
+}
+function need-file {
+	[ -f "${1}" ] || error "file ${1} doesn't exist"
+}
+function need-directory {
+	[ -d "${1}" ] || error "directory ${1} doesn't exist"
+}
+
+function error {
+	printf '\e[31;1m[error] \e[0;31m%s\e[m\n' "$@"
+	exit 1
+}
+function warn {
+	printf '\e[33;1m[warn] \e[0;33m%s\e[m\n' "$@"  >&2
+}
 
 ## copy-array
 # A univeral function to copy both normal and associative arrays
@@ -13,43 +110,15 @@ function copy-array {
 		target["${idx}"]="${source[${idx}]}"
 	}
 }
-function copy-array.meta {
-	_f_name="copy-array"
-	_f_id="copy-array"
-	_f_argn=2
-	_f_arg1=2:in
-	_f_arg2=2:out
-}
 
-function copy-array.check {
-	local -a a=($RANDOM $RANDOM $RANDOM)
-	unset "a[1]"
-	local -a b=()
-	copy-array a b
-	((b[0]==a[0])) &&
-		((b[1]==a[1])) &&
-		((b[2]==a[2])) ||
-			error "Function [bx_]copy-array[.check] validation check failed at numeric array"
-	local -A c=([aa]=$RANDOM [a a]=$RANDOM [ a a]=$RANDOM)
-	unset "c[a a]"
-	local -A d
-	copy-array c d
-	((${d[aa]}==${c[aa]})) &&
-		[ "${d[a a]}" = "${c[a a]}" ] &&
-		((${d[ a a]}==${c[ a a]})) ||
-			error "Function [bx_]copy-array[.check] validation check failed at associative array"
-	_
-	_check-pass "${_f_name}" "${_f_id}"
-}
-
-function _check-pass {
-	printf '\e[32m%s (%s) passed function check\e[m' "$1" "$2"
-}
-
-function import-function {
-	"$1.meta" || error "Function $1 has no metadata"
-	copy-function "${_f_id}" "${_f_name}"
-	copy-function "${_f_id}.meta" "${_f_name}.meta"
+function transform-array {
+#	local function="${1:1:-1}"
+	local -n source="${2}"
+	local -n target="${3}"
+	target=()
+	for idx in "${!source[@]}"; {
+		target["${idx}"]="$("${1}" "${source[${idx}]}")"
+	}
 }
 
 function validate {
@@ -84,12 +153,16 @@ function arg-append {
 	done
 }
 
-
-
 function print-array {
 	local -n source="$1"
 	for idx in "${!source[@]}"; {
 		echo "${source[idx]}"
+	}
+}
+function debug-array {
+	local -n source="$1"
+	for idx in "${!source[@]}"; {
+		printf 'array(\e[1;32m%s\e[m) value(\e[1;35m%s\e[m)\n' "${1}" "${source[idx]}"
 	}
 }
 
@@ -185,17 +258,11 @@ function setface {
 		white)         [ "$mode" = '38' ] && printf '\\e[97m' || printf '\\e[107m';;
 		*) case "${1::1}" in
 			   '#')
-				   if [ "$TERM" = 'linux' ] && ((options[tty-linuxfb])); then # Hack for linux framebuffer tty
-					   case "$mode" in
-						   38) printf '\\e]P2%s\\e[32m' "${1:1:6}" ;;
-						   48) printf '\\e]P1%s\\e[41m' "${1:1:6}"
-					   esac
-				   else
-					   local r="${1:1:2}"
-					   local g="${1:3:2}"
-					   local b="${1:5:2}"
-					   printf '\\e[%d;2;%d;%d;%dm' "${mode}" $((16#$r)) $((16#$g)) $((16#$b))
-				   fi;;
+				   local r="${1:1:2}"
+				   local g="${1:3:2}"
+				   local b="${1:5:2}"
+				   printf '\\e[%d;2;%d;%d;%dm' "${mode}" $((16#$r)) $((16#$g)) $((16#$b))
+				   ;;
 			   'c')
 				   printf '\\e[%d;5;%dm' "${mode}" "${1:1}"
 		   esac
@@ -257,10 +324,12 @@ function :underline {
 	shift
 	[ -n "$1" ] && "$@";
 }
-
-function has-command {
-	command -v "$1" >/dev/null 2>&1
+function :reset {
+	printf '\\e[m'
+	[ -n "$1" ] && "$@";
 }
+
+
 function has-array-item {
 	local -n source="$1" 
 	local target="$2"
@@ -272,56 +341,23 @@ function has-array-item {
 }
 
 
-function need-command {
-	command -v "$1" >/dev/null 2>&1 || error "command ${1} not found"
-}
-function need-not-empty {
-	local -n source="$1"
-	[ -z "${source}" ] && error "variable ${1} is empty"
-}
-function need-not-empty-value {
-	local source="$1"
-	[ -z "${source}" ] && error "variable ${1} has empty value"
-}
-function need {
-	#exit if var doesnt match expectation
-	local -n source="$1"
-	local target="$2"
-	[ "${source}" = "${target}" ] || error "variable ${1} isn't expected ${2}"
-}
-function need-value {
-	#exit if var doesnt match expectation
-	local source="$1"
-	local target="$2"
-	[ "${source}" = "${target}" ] || error "variable ${1} doesn't have expected value ${2}"
-}
-function need-array-item {
-	#exit if var doesnt match expectation
-	local -n source="$1" 
-	local target="$2"
-	local _has=no
-	for idx in "${!source[@]}"; {
-		[ "${source[idx]}" = "${target}" ] && _has=yes && return
-	}
-	error "array ${1} doesn't have expected item with value ${2}"
-}
-function need-file {
-	[ -f "${1}" ] || error "file ${1} doesn't exist"
-}
-function need-directory {
-	[ -d "${1}" ] || error "directory ${1} doesn't exist"
-}
 
-function error {
-	printf '\e[31;1m[error] \e[0;31m%s\e[m\n' "$@"
-	exit 1
-}
 
 function __bxcommon-about {
 	echo "version: ${bxcommon_version}"
+	declare -F
 }
 function bxcommon-check {
 	true
+}
+
+## list-directory
+# Basically like ls command 
+function list-directory {
+	((options[display-dotfiles]==1)) && shopt -s dotglob
+	((options[display-dotfiles]==0)) && shopt -u dotglob
+	printf '..\n'
+	printf '%s\n' *
 }
 
 ## base-name
@@ -332,5 +368,130 @@ function base-name {
 		printf '%s\n' "${file##*/}"
 	}
 }
-				
+function dir-name {
+	for file in "$@"; do
+		# Usage: dirname "path"
+		tmp=${file:-.}
+		
+		tmp=${tmp%%"${tmp##*[!/]}"}
+		
+		[[ ${tmp##*/*} ]] && tmp=.
+		
+		tmp=${tmp%/*}
+		tmp=${tmp%%"${tmp##*[!/]}"}
+		
+		printf '%s\n' "${tmp:-/}"
+done
+}
+## current-time
+# Basically like coreutil "'date'"
+function current-time { printf "%($1)T\\n"; }
+function current-time.epoch { printf "%(%s)T\\n"; }
+
+# function ext {
+# 	declare -ng __ext_name="$1"
+# 	declare -g __ext_num="$2"
+# 	declare -g __ext_id=0
+
+# 	[ -z "$2" ] && {
+# 		__ext_name+=('')
+# 		__ext_num='-1'
+# 	}
+
+# 	function , {
+# 		if ((__ext_id==0)); then
+# 			__ext_name[-1]+="$*"
+# 			__ext_id=1
+# 		else
+# 			__ext_name[-1]+=" $*"
+# 		fi
+# 	}
+# }
+
+function block {
+	[ "$2" = '{' ] || exit 1
+	declare -ng __ext_name="$1"
+	declare -g __ext_id=0
+	declare -ag __ext_type
+	__ext_type[0]='none'
+	__ext_type[1]='newline'
+	set +e
+#	PATHbak="$PATH"
+#	PATH=''
+#	trap 'eval "+ $BASH_COMMAND"' ERR
+
+	function + {
+		case "${__ext_type[-1]}" in
+			'newline') __data-new "$1";;
+			'oneline') __data-add "$1";;
+			*) : ;;
+		esac
+	}
+	
+	function line {
+		__ext_id=0
+		__ext_num='-1'
+		__ext_name+=('')
+		__ext_type+=('oneline')
+	}
+	
+	function __data-add {
+		if ((__ext_id==0)); then
+			__ext_name[-1]+="$*"
+			__ext_id=1
+		else
+			__ext_name[-1]+=" $*"
+		fi
+	}
+	function __data-new {
+		__ext_name+=("$*")
+	}
+	function }, {
+		unset '__ext_type[-1]'
+#		[ ! "${__ext_type[-1]}" = 'none' ] && {
+#			PATH="$PATHbak"
+#		}
+	}
+}
+
+:
+
+get:cursor() {
+    IFS='[;' read -p $'\e[6n' -d R -rs _ y x _
+    printf '%s\n' "$y $x"
+}
+
+function output {
+	[ -z "${output}" ] && output='echo -E'
+	case  "${output:0:5}" in
+		'echo '|'echo')
+			local flags="${output: 5}"
+			echo "${flags:--E}" "$@"
+			return;;
+		*)
+			local -n target="${output}"
+			target="$@"
+			;;
+	esac
+}
+
+#############################################################################################LAYER II
+function bx:common:II {
+function bx:common:II:grep {
+	PATTERN="$1"
+	shift
+	IFS=$'\n'
+	INPUT=-
+	exec 3<&0
+	while read -ru 3 line; do
+		[[ "$line" =~ .*$PATTERN.* ]] && echo -E "$line"
+	done
+}
+function bx:common:II:count-lines {
+	local -a i
+	mapfile -t i
+	output "${#i[@]}"
+}
+}
+
 [[ "${BASH_SOURCE[0]}" = "${0}" ]] && __bxcommon-about

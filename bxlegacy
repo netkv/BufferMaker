@@ -1,0 +1,138 @@
+#!/bin/bash
+bxlegacy_version="0.11.8"
+bxlegacy_support=(
+	"C ${buffermaker_version}"
+	"E 0.11.7 Ex"
+)
+### versioning scheme:
+# ver Ha -> development version (alpha)
+# ver Ex -> test version (beta)
+# ver Q -> quality control (release candidate)
+# ver Re -> release version
+
+# ver type U -> unified version (single library)
+
+### version specific fixes ###
+function fix-0.11.7-Ex {
+	function linenum.begin {
+		# Get length of line-number of lines
+		bf_d[length]="${#buffer[@]}"
+		((bf_d[length]==0)) &&((bf_d[length]++))
+		
+		bf_d[number-length]=${#bf_d[length]}
+		bf_d[number-space]=1
+	}
+	function linenum.loop-begin {
+		space=1
+		ln="\e[%dG%b%*s"
+		lnargs=(
+			"${bf_d[loc-x]}"
+			"${faces[line-number]}"
+			"${bf_d[number-length]}"
+			"$i"
+		)
+		((i == bf_d[line])) && lnargs[1]="${faces[line-number-current-line]}"
+	}
+	function linenum.update {
+		printf '\e[%s;%sH%b%*s\e[m'\
+			   $((last_line + options[menu-line] - bf_d[base] + bf_d[loc-y]))\
+			   "${bf_d[loc-x]}"\
+			   "${faces[line-number]}"\
+			   ${bf_d[number-length]}\
+			   $last_line
+		printf '\e[%s;%sH%b%*s\e[m'\
+			   $y\
+			   "${bf_d[loc-x]}"\
+			   "${faces[line-number-current-line]}"\
+			   ${bf_d[number-length]}\
+			   ${bf_d[line]}
+	}
+
+	function set-linenum {
+		bf_h[redraw.content begin]=linenum.begin
+		bf_h[redraw.content loop-begin]=linenum.loop-begin
+		bf_h[redraw.cursor pre-redraw]=linenum.update
+	}
+	function unset-linenum {
+		bf_h[redraw.content begin]=''
+		bf_h[redraw.content loop-begin]=''
+		bf_h[redraw.cursor pre-redraw]=''
+	}
+
+	function redraw.content {
+		printf '\e[?25l'
+		
+		# the first line should be always empty 
+		unset buffer[0]
+
+		((bf_d[number-length]=0, bf_d[number-space]=0))
+		
+		@hook begin
+		
+		# Move the buffer horizontally if needed
+		((bf_d[column] +3 < bf_d[size-x] - bf_d[number-length] - 1)) &&
+			bf_d[basecolumn]=0
+		((bf_d[column] +3 > bf_d[size-x] - bf_d[number-length] - 1)) &&
+			bf_d[basecolumn]=$((bf_d[column] - (bf_d[size-x] + bf_d[loc-x] - bf_d[number-length] - 1) +3))
+
+		printf "\e[%s;%sH" "${bf_d[loc-y]}" "${bf_d[loc-x]}"
+		
+		# IFS has to be empty in order to bufferarray multiarray be printed as words instead of chars
+		IFS=''
+
+		# Handle line number displaying
+		# the resulting line has to be printed in one go to prevent flicker
+		# space stores if the position of actuall text should be offset by +1
+		# ln stores printf print line
+		# args stores printf arguments
+		local -i space
+		local ln
+		local -a lnargs
+		
+		# Iterate over shown lines
+		local -i max=$((bf_d[size-y]))
+		
+		for ((i = bf_d[base]; i - bf_d[base] < max; i++)); do
+			# if the line is last, do not add newline
+
+			ln="\e[%dG"
+			lnargs=(
+				"${bf_d[loc-x]}"
+			)
+			@hook loop-begin
+			
+			((i - bf_d[base] > max - 2)) && nlchar='' || nlchar='\n'
+
+			((i > ${#buffer[@]})) &&
+				printf '%b\e[%d;%dH%*s'\
+					   "${faces[${bf_d[background]:-default}]}"\
+					   $((bf_d[loc-y]+i-1))\
+					   "${bf_d[loc-x]}"\
+					   $((bf_d[size-x] - bf_d[number-length]))\
+					   ''\
+					&& continue
+			
+			# to improve speed syntaxing has to be "lazy" -- having to be heavily cached as ram is far less expensive to waste
+			[ -z "${bf_s[base+i]}" ] && {
+				make-render-line $((base + i))
+			}
+			local -n linearray="${bf_s[i]}"
+			
+			# due to escape codes present in bf_s,
+			# the bf_s has to be multidimensional nonsense for perfomance reasons
+			printf "${ln}%b%*s\e[%sG%b%s\e[m%b"\
+				   ${lnargs[@]}\
+				   "${faces[${bf_d[background]:-default}]}"\
+				   $((bf_d[size-x] - bf_d[number-length]))\
+				   ''\
+				   $((bf_d[loc-x] + bf_d[number-length] + space))\
+				   "${faces[${bf_d[background]:-default}]}"\
+				   "${linearray[*]:bf_d[basecolumn]:bf_d[size-x] - (bf_d[number-length])}"\
+				   "$nlchar"
+		done
+
+		@ifs
+		# redraw menu if open
+		[ "${bf_d[mode]}" = 'menu' ] && redraw.menu
+	}
+}

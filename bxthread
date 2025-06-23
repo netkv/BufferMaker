@@ -1,0 +1,78 @@
+#!/bin/bash
+source bxcommon
+
+function pass {
+	while IFS='' read -r; do echo "$REPLY"; done
+}
+
+# enter level
+coproc {
+	echo whatever
+}
+#fg()
+pass <&"${COPROC[0]}"
+
+
+
+function async {
+	[ ! "${1}" = '{' ] && exit 1
+	
+	function count: {
+		__bxt_count="${1}"
+	}
+	
+	function }, {
+		:
+		:
+		local -i m="${__bxt_count}"
+		declare -a __bxt_c
+		for ((
+				i=0;
+				i<=m - 1;
+				i++
+			))
+		{
+			((i<=m / 2 - 1)) && echo "open"
+			((i==m / 2 - 1)) && echo "wasted"
+			((i>m / 2 - 1)) && echo "close ${i}"
+		}
+		print-array __bxt_c
+		unset count:
+		unset },
+	}
+	function async:exec {
+		coproc {
+			sleep 1
+		}
+		pass <&"${COPROC[0]}"
+	}
+}
+
+async {
+	count: 8
+	
+	thread:0() {
+		echo thread zero
+	}
+	thread:1() {
+		echo thread one
+	}
+	thread:2() {
+		echo thread two
+	}
+	thread:3() {
+		echo thread three
+	}
+	thread:4() {
+		echo thread four
+	}
+	thread:5() {
+		echo thread five
+	}
+	thread:6() {
+		echo thread six
+	}
+	thread:7() {
+		echo thread seven
+	}
+},
